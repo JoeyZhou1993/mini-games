@@ -12,7 +12,7 @@
   html,body { height:100%; overflow:hidden; }
   :root { --gw: min(96vw, 52vh); }
   body {
-    background: radial-gradient(130% 90% at 50% 0%, #56649f 0%, #4a5aa8 48%, #3e4c90 100%);
+    background: radial-gradient(130% 100% at 50% 0%, #fdf8ef 0%, #f8ecd9 55%, #f3e2c8 100%);
     font-family: -apple-system, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
     display:flex; align-items:center; justify-content:center;
     touch-action:manipulation;
@@ -20,75 +20,86 @@
   }
   #game { width:var(--gw); position:relative; }
 
-  /* 顶栏 */
   #topbar { display:flex; align-items:center; justify-content:space-between; padding:2px 4px 10px; }
-  #title { display:flex; align-items:center; gap:8px; color:#fff; font-weight:800; font-size:clamp(17px,4.6vw,22px); text-shadow:0 2px 3px rgba(0,0,0,.35); }
+  #title { display:flex; align-items:center; gap:8px; color:#6b4f35; font-weight:800; font-size:clamp(17px,4.6vw,22px); }
   #title .cat { font-size:1.3em; }
-  #level { color:#f5b93d; font-weight:800; font-size:clamp(15px,4.2vw,19px); text-shadow:0 2px 3px rgba(0,0,0,.35); }
+  #level { color:#fff; font-weight:800; font-size:clamp(13px,3.8vw,16px);
+    background:linear-gradient(180deg,#ffab52,#f08018); padding:7px 18px; border-radius:20px;
+    box-shadow:0 3px 0 #c56510, 0 4px 8px rgba(200,120,30,.35); }
   #restart { border:none; cursor:pointer; width:clamp(34px,8.5vw,42px); height:clamp(34px,8.5vw,42px); border-radius:50%;
-    background:rgba(255,255,255,.16); color:#fff; font-size:clamp(17px,4.5vw,22px); font-weight:800; line-height:1;
-    box-shadow:inset 0 2px 0 rgba(255,255,255,.18), 0 2px 5px rgba(0,0,0,.28); }
-  #restart:active { transform:scale(.92); }
+    background:#fff; color:#a3805e; font-size:clamp(17px,4.5vw,22px); font-weight:800; line-height:1;
+    box-shadow:0 3px 0 #e2d1b8, 0 4px 8px rgba(160,120,70,.25); }
+  #restart:active { transform:translateY(2px); box-shadow:0 1px 0 #e2d1b8; }
 
-  /* 棋盘 */
-  #boardwrap { background:#141d44; border-radius:10px; padding:5px; box-shadow:0 5px 16px rgba(0,0,0,.4), inset 0 0 0 3px #0f1738; }
+  /* 棋盘: 白卡 + 宫格交替奶油色 */
+  #boardwrap { background:#fff; border-radius:14px; padding:6px;
+    box-shadow:0 6px 0 #e2d1b8, 0 12px 24px rgba(160,120,70,.22); }
   #board { display:grid; grid-template-columns:repeat(9,1fr); grid-template-rows:repeat(9,1fr); aspect-ratio:1; gap:0;
-    background:#39457f; border:2px solid #39457f; border-radius:6px; overflow:hidden; }
-  .sq { background:#1d2a5e; display:flex; align-items:center; justify-content:center;
-    font-size:calc(var(--gw)/16); font-weight:700; color:#7fa8f0; position:relative;
-    border-right:1px solid #2a3568; border-bottom:1px solid #2a3568; }
-  .sq.bR { border-right:2px solid #4a5aa8; }
-  .sq.bB { border-bottom:2px solid #4a5aa8; }
-  .sq.given { color:#fff; font-weight:800; }
-  .sq.sel { background:#3a4f9e !important; box-shadow:inset 0 0 0 2px #7fb2ff; }
-  .sq.same { background:#28407c; }
-  .sq.line { background:#223263; }
-  .sq.err { color:#ff7a70 !important; }
+    border:2px solid #d9c3a4; border-radius:8px; overflow:hidden; }
+  .sq { display:flex; align-items:center; justify-content:center;
+    font-size:calc(var(--gw)/16); font-weight:700; color:#e8853d; position:relative;
+    border-right:1px solid #eadbc4; border-bottom:1px solid #eadbc4; background:#fffdf8; }
+  .sq.alt { background:#faf1e0; }
+  .sq.bR { border-right:2px solid #d9c3a4; }
+  .sq.bB { border-bottom:2px solid #d9c3a4; }
+  .sq.given { color:#5b4632; font-weight:800; }
+  .sq.sel { background:#ffe3bd !important; box-shadow:inset 0 0 0 2px #f5a623; }
+  .sq.same { background:#ffedd2; }
+  .sq.line { background:#fdf6e6; }
+  .sq.err { color:#e05252 !important; }
   .sq.flash { animation:okFlash .5s ease; }
-  @keyframes okFlash { 30%{background:#2f7a4d;} }
+  @keyframes okFlash { 30%{background:#c9ecc4;} }
 
-  /* 数字键盘 */
+  /* 数字键盘: 白瓷键 */
   #pad { display:grid; grid-template-columns:repeat(9,1fr); gap:5px; margin-top:12px; }
-  .key { aspect-ratio:0.86; border:none; border-radius:8px; background:rgba(255,255,255,.14); color:#fff;
+  .key { aspect-ratio:0.86; border:none; border-radius:10px; background:#fff; color:#5b4632;
     font-size:calc(var(--gw)/15); font-weight:800; cursor:pointer;
-    box-shadow:inset 0 2px 0 rgba(255,255,255,.14), 0 2px 4px rgba(0,0,0,.25);
+    box-shadow:0 3px 0 #e2d1b8, 0 4px 6px rgba(160,120,70,.18);
     display:flex; flex-direction:column; align-items:center; justify-content:center; }
-  .key:active { transform:scale(.93); }
-  .key .cnt { font-size:.42em; font-weight:700; color:#aebbf0; }
-  .key.done { opacity:.25; pointer-events:none; }
+  .key:active { transform:translateY(2px); box-shadow:0 1px 0 #e2d1b8; }
+  .key .cnt { font-size:.42em; font-weight:700; color:#bd9d78; }
+  .key.done { opacity:.3; pointer-events:none; }
   #tools { display:flex; gap:8px; margin-top:8px; }
-  .tool { flex:1; border:none; border-radius:10px; padding:11px 0; background:rgba(255,255,255,.14); color:#fff;
+  .tool { flex:1; border:none; border-radius:12px; padding:11px 0; background:#fff; color:#6b4f35;
     font-size:clamp(14px,3.8vw,17px); font-weight:800; cursor:pointer;
-    box-shadow:inset 0 2px 0 rgba(255,255,255,.14), 0 2px 4px rgba(0,0,0,.25); }
-  .tool:active { transform:scale(.96); }
+    box-shadow:0 3px 0 #e2d1b8, 0 4px 6px rgba(160,120,70,.18); }
+  .tool:active { transform:translateY(2px); box-shadow:0 1px 0 #e2d1b8; }
   .tool.off { opacity:.35; pointer-events:none; }
 
-  /* 胜利弹窗 */
-  #over { position:absolute; inset:-6px; z-index:60; display:none; align-items:center; justify-content:center; border-radius:12px; background:rgba(10,14,32,.85); backdrop-filter:blur(3px); }
+  /* 新手引导 */
+  #tut { position:absolute; inset:0; z-index:45; pointer-events:none; display:none; }
+  #tut.show { display:block; }
+  #tutFinger { position:absolute; font-size:clamp(34px,9vw,46px); filter:drop-shadow(0 3px 4px rgba(0,0,0,.3));
+    animation:tutTap 1.1s ease-in-out infinite; transition:left .35s, top .35s; will-change:left,top; }
+  @keyframes tutTap { 0%,100%{transform:translateY(0) scale(1);} 45%{transform:translateY(6px) scale(.86);} 60%{transform:translateY(0) scale(1);} }
+  #tutTip { position:absolute; left:50%; transform:translateX(-50%); top:var(--tipy,-8px);
+    background:#fff; color:#6b4f35; font-weight:800; font-size:clamp(14px,4vw,18px);
+    padding:9px 20px; border-radius:20px; box-shadow:0 4px 12px rgba(160,120,70,.3); white-space:nowrap; z-index:46; }
+
+  /* 胜利弹窗: 白卡 */
+  #over { position:absolute; inset:-6px; z-index:60; display:none; align-items:center; justify-content:center; border-radius:12px; background:rgba(248,236,217,.78); backdrop-filter:blur(4px); }
   #over.show { display:flex; animation:fadeIn .3s ease; }
   @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
-  #overCard { text-align:center; color:#fff; padding:26px 30px; animation:cardIn .38s cubic-bezier(.34,1.4,.64,1); }
+  #overCard { text-align:center; color:#6b4f35; padding:28px 36px; background:#fff; border-radius:22px;
+    box-shadow:0 10px 30px rgba(160,120,70,.28); animation:cardIn .38s cubic-bezier(.34,1.4,.64,1); }
   @keyframes cardIn { from{transform:scale(.72); opacity:0;} to{transform:scale(1); opacity:1;} }
   #overCard .bigcat { font-size:clamp(52px,15vw,74px); animation:catBounce 1s ease infinite alternate; }
   @keyframes catBounce { from{transform:translateY(0);} to{transform:translateY(-10px);} }
-  #overCard h2 { font-size:clamp(22px,6.4vw,30px); margin:8px 0 6px; text-shadow:0 3px 0 rgba(0,0,0,.35); }
-  #overCard .sub { color:#9fb0e8; font-size:clamp(13px,3.8vw,16px); margin-bottom:22px; }
+  #overCard h2 { font-size:clamp(22px,6.4vw,30px); margin:8px 0 6px; }
+  #overCard .sub { color:#b08d64; font-size:clamp(13px,3.8vw,16px); margin-bottom:22px; }
   #nextBtn { border:none; cursor:pointer; font-size:clamp(16px,4.6vw,20px); font-weight:800; color:#fff; padding:13px 42px; border-radius:14px;
-    background:linear-gradient(180deg,#ffb340,#ff8c1a); box-shadow:0 5px 0 #c96a08, 0 8px 14px rgba(0,0,0,.35); }
+    background:linear-gradient(180deg,#ffb340,#ff8c1a); box-shadow:0 5px 0 #c96a08, 0 8px 14px rgba(200,120,20,.35); }
   #nextBtn:active { transform:translateY(3px); box-shadow:0 2px 0 #c96a08; }
 
-  /* 猫雨 */
   .catRain { position:absolute; z-index:55; font-size:30px; pointer-events:none; animation:catFall 2.2s linear forwards; }
   @keyframes catFall { from{transform:translateY(-50px) rotate(-15deg); opacity:1;} to{transform:translateY(110vh) rotate(20deg); opacity:.8;} }
 
-  /* Toast */
   #toast { position:fixed; left:50%; bottom:12%; transform:translateX(-50%) translateY(16px);
-    background:rgba(20,26,58,.92); color:#fff; font-weight:700; font-size:clamp(13px,3.8vw,16px);
+    background:rgba(107,79,53,.94); color:#fff; font-weight:700; font-size:clamp(13px,3.8vw,16px);
     padding:10px 26px; border-radius:22px; opacity:0; pointer-events:none; z-index:100; transition:all .25s ease; }
   #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 
-  /* 横屏提示 */
-  #rotate { display:none; position:fixed; inset:0; z-index:99; background:#4a5aa8; color:#fff;
+  #rotate { display:none; position:fixed; inset:0; z-index:99; background:#f8ecd9; color:#6b4f35;
     font-size:clamp(16px,3vh,22px); font-weight:800; text-align:center;
     align-items:center; justify-content:center; flex-direction:column; gap:14px; }
   #rotate .ph { font-size:44px; }
@@ -99,10 +110,11 @@
 <div id="game">
   <div id="topbar">
     <div id="title"><span class="cat">😺</span>Cat Sudoku</div>
-    <div id="level">Level 1</div>
+    <div id="level">LEVEL 1</div>
     <button id="restart" title="Exit">✕</button>
   </div>
   <div id="boardwrap"><div id="board"></div></div>
+  <div id="tut"><div id="tutTip">Tap an empty cell</div><div id="tutFinger">👆</div></div>
   <div id="pad"></div>
   <div id="tools">
     <button class="tool" id="eraseBtn">🧽 Erase</button>
@@ -142,7 +154,7 @@ function showToast(txt){
   clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),1400);
 }
 if(location.search.includes('reset')){
-  try{ localStorage.removeItem('cs_level'); }catch(e){}
+  try{ localStorage.removeItem('cs_level'); localStorage.removeItem('cs_tut'); }catch(e){}
   history.replaceState(null,'',location.pathname);
 }
 
@@ -211,6 +223,7 @@ for(let i=0;i<81;i++){
   const c=i%9, r=~~(i/9);
   if(c===2||c===5) d.classList.add('bR');
   if(r===2||r===5) d.classList.add('bB');
+  if((~~(r/3)+~~(c/3))%2===1) d.classList.add('alt');   // 宫格交替奶油色
   d.addEventListener('click',()=>selectSq(i));
   boardEl.appendChild(d); sqs.push(d);
 }
@@ -228,7 +241,7 @@ function newLevel(){
   const {puzzle:p, solution:s}=makePuzzle(holes);
   puzzle=p; solution=s; user=p.slice();
   selected=-1; hints=3; playing=true;
-  document.getElementById('level').textContent='Level '+level;
+  document.getElementById('level').textContent='LEVEL '+level;
   document.getElementById('hintBtn').textContent='💡 Hint (3)';
   document.getElementById('hintBtn').classList.remove('off');
   document.getElementById('over').classList.remove('show');
@@ -262,11 +275,13 @@ function render(){
 function selectSq(i){
   if(!playing) return;
   selected=i; sndTap(); render();
+  if(tutorialActive && puzzle[i]===0 && user[i]!==solution[i]){ tutStage=1; positionTutorial(); }
 }
 function inputNum(v){
   if(!playing || selected<0 || puzzle[selected]!==0) return;
   user[selected]=v;
-  if(v===solution[selected]){ sndPlace(); vib(8); sqs[selected].classList.add('flash'); setTimeout(()=>sqs[selected].classList.remove('flash'),500); }
+  if(v===solution[selected]){ sndPlace(); vib(8); sqs[selected].classList.add('flash'); setTimeout(()=>sqs[selected].classList.remove('flash'),500);
+    if(tutorialActive) endTutorial(true); }
   else { sndErr(); vib([40,50,40]); }
   render();
   checkWin();
@@ -313,8 +328,47 @@ function checkWin(){
 document.getElementById('nextBtn').addEventListener('click',()=>newLevel());
 document.getElementById('restart').addEventListener('click',e=>{ e.stopPropagation(); bridge.exit(); });
 
+/* ===== 新手引导: 两阶段(点空格→点数字), 首次填对毕业 ===== */
+let tutorialActive=false, tutStage=0;
+function positionTutorial(){
+  if(!tutorialActive) return;
+  const g=document.getElementById('game').getBoundingClientRect();
+  const f=document.getElementById('tutFinger'), tip=document.getElementById('tutTip');
+  let target=null;
+  if(tutStage===0){
+    const e=user.indexOf(0)>=0? user.findIndex((v,i)=>v===0&&puzzle[i]===0) : -1;
+    if(e<0) return;
+    target=sqs[e]; tip.textContent='Tap an empty cell';
+  } else {
+    if(selected<0) return;
+    target=keys[solution[selected]-1]; tip.textContent='Now tap this number!';
+  }
+  const r=target.getBoundingClientRect();
+  f.style.left=(r.left+r.width/2-g.left-13)+'px';
+  f.style.top=(r.top+r.height/2-g.top-4)+'px';
+  let tipy=r.top-g.top-52;
+  if(tipy<60) tipy=r.bottom-g.top+14;     // 目标太靠顶(topbar区): 气泡翻到下方
+  tip.style.setProperty('--tipy',tipy+'px');
+}
+let tutTimer=null;
+function tutLoop(){
+  clearInterval(tutTimer);
+  tutTimer=setInterval(()=>{ if(tutorialActive) positionTutorial(); else clearInterval(tutTimer); },600);
+}
+function setupTutorial(){
+  if(store.get('cs_tut')) return;
+  tutorialActive=true; tutStage=0;
+  document.getElementById('tut').classList.add('show');
+  positionTutorial(); tutLoop();
+}
+function endTutorial(grad){
+  document.getElementById('tut').classList.remove('show');
+  if(grad){ tutorialActive=false; store.set('cs_tut','1'); }
+}
+
 level=(+store.get('cs_level'))||1;
 newLevel();
+setupTutorial();
 </script>
 </body>
 </html>

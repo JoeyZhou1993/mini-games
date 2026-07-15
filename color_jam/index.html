@@ -12,7 +12,7 @@
   html,body { height:100%; overflow:hidden; }
   :root { --gw: min(92vw, 56vh); }
   body {
-    background: radial-gradient(130% 90% at 50% 0%, #56649f 0%, #4a5aa8 48%, #3e4c90 100%);
+    background: radial-gradient(130% 100% at 50% 0%, #f7f7fb 0%, #e9eaf2 55%, #dcdfe9 100%);
     font-family: -apple-system, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
     display:flex; align-items:center; justify-content:center;
     touch-action:none;
@@ -21,47 +21,72 @@
   #game { width:var(--gw); position:relative; }
 
   #topbar { display:flex; align-items:center; justify-content:space-between; padding:2px 4px 12px; }
-  #title { color:#fff; font-weight:800; font-size:clamp(17px,4.6vw,22px); text-shadow:0 2px 3px rgba(0,0,0,.35); }
-  #level { color:#f5b93d; font-weight:800; font-size:clamp(15px,4.2vw,19px); text-shadow:0 2px 3px rgba(0,0,0,.35); }
+  #title { color:#3a4256; font-weight:800; font-size:clamp(17px,4.6vw,22px); }
+  #level { color:#fff; font-weight:800; font-size:clamp(13px,3.8vw,16px);
+    background:linear-gradient(180deg,#6f9bf5,#4a72d8); padding:7px 18px; border-radius:20px;
+    box-shadow:0 3px 0 #3557ad, 0 4px 8px rgba(60,90,180,.35); }
   .cbtn { border:none; cursor:pointer; width:clamp(34px,8.5vw,42px); height:clamp(34px,8.5vw,42px); border-radius:50%;
-    background:rgba(255,255,255,.16); color:#fff; font-size:clamp(17px,4.5vw,22px); font-weight:800; line-height:1;
-    box-shadow:inset 0 2px 0 rgba(255,255,255,.18), 0 2px 5px rgba(0,0,0,.28); }
-  .cbtn:active { transform:scale(.92); }
+    background:#fff; color:#5a6580; font-size:clamp(17px,4.5vw,22px); font-weight:800; line-height:1;
+    box-shadow:0 3px 0 #c9cede, 0 4px 8px rgba(90,100,140,.25); }
+  .cbtn:active { transform:translateY(2px); box-shadow:0 1px 0 #c9cede; }
   #btns { display:flex; gap:10px; }
 
-  /* 棋盘容器: 留出门的外框空间 */
+  /* 棋盘: 深灰蓝厚边框 + 浅灰白格 */
   #arena { position:relative; width:100%; aspect-ratio:1; }
-  #boardwrap { position:absolute; inset:4.5%; background:#141d44; border-radius:8px;
-    box-shadow:0 5px 16px rgba(0,0,0,.4), inset 0 0 0 3px #0f1738; }
-  #board { position:absolute; inset:6px; }
-  .cellbg { position:absolute; background:#1d2a5e; border-radius:6%; box-shadow:inset 0 1px 3px rgba(0,0,0,.4); }
-  .door { position:absolute; border-radius:5px; box-shadow:0 0 12px var(--dc), inset 0 0 0 2px rgba(255,255,255,.35); }
+  #boardwrap { position:absolute; inset:4.5%; background:#454e68; border-radius:14px;
+    box-shadow:0 6px 0 #333a50, 0 10px 20px rgba(60,70,100,.35); }
+  #board { position:absolute; inset:9px; background:#f2f3f8; border-radius:7px; }
+  .cellbg { position:absolute; background:#e8eaf2; border-radius:8%; box-shadow:inset 0 1px 2px rgba(120,130,160,.25), inset 0 -1px 0 rgba(255,255,255,.8); }
+  .door { position:absolute; border-radius:5px; box-shadow:0 0 10px var(--dc), inset 0 2px 0 rgba(255,255,255,.45), inset 0 -2px 0 rgba(0,0,0,.25); z-index:2; }
   .blockEl { position:absolute; touch-action:none; cursor:grab; z-index:10; }
-  .blockEl .bc { position:absolute; border-radius:10%;
-    box-shadow: inset 0 3px 0 rgba(255,255,255,.34), inset 0 -3px 0 rgba(0,0,0,.28); }
+  /* 乐高块: 主色+2x2凸点+厚底 */
+  .blockEl .bc { position:absolute; border-radius:12%;
+    box-shadow: inset 0 3px 0 rgba(255,255,255,.4), inset 0 -4px 0 rgba(0,0,0,.22), 0 2px 3px rgba(60,70,100,.3);
+    background-image:
+      radial-gradient(circle at 30% 30%, rgba(255,255,255,.42) 13%, rgba(0,0,0,.12) 16%, transparent 19%),
+      radial-gradient(circle at 70% 30%, rgba(255,255,255,.42) 13%, rgba(0,0,0,.12) 16%, transparent 19%),
+      radial-gradient(circle at 30% 70%, rgba(255,255,255,.34) 13%, rgba(0,0,0,.14) 16%, transparent 19%),
+      radial-gradient(circle at 70% 70%, rgba(255,255,255,.34) 13%, rgba(0,0,0,.14) 16%, transparent 19%); }
   .blockEl.exiting { transition:left .28s ease-in, top .28s ease-in, opacity .28s; opacity:0; pointer-events:none; }
-  .blockEl.nope { animation:nope .28s ease; }
-  @keyframes nope { 25%{transform:translateX(-4px);} 50%{transform:translateX(4px);} 75%{transform:translateX(-2px);} }
 
-  /* 弹窗 */
-  #over { position:absolute; inset:-6px; z-index:60; display:none; align-items:center; justify-content:center; border-radius:12px; background:rgba(10,14,32,.85); backdrop-filter:blur(3px); }
+  /* 新手引导 */
+  #tut { position:absolute; inset:0; z-index:45; pointer-events:none; display:none; }
+  #tut.show { display:block; }
+  #tutFinger { position:absolute; font-size:clamp(34px,9vw,46px); filter:drop-shadow(0 3px 4px rgba(0,0,0,.35));
+    animation:tutMove 1.5s ease-in-out infinite; will-change:left,top; }
+  @keyframes tutMove {
+    0%{ left:var(--fx); top:var(--fy); transform:scale(1); opacity:0; }
+    12%{ opacity:1; }
+    26%{ left:var(--fx); top:var(--fy); transform:scale(.84); }
+    38%{ transform:scale(.84); }
+    72%{ left:var(--tx); top:var(--ty); transform:scale(.84); opacity:1; }
+    86%{ left:var(--tx); top:var(--ty); transform:scale(1); }
+    100%{ left:var(--tx); top:var(--ty); transform:scale(1); opacity:0; }
+  }
+  #tutTip { position:absolute; left:50%; transform:translateX(-50%); top:var(--tipy);
+    background:#fff; color:#3a4256; font-weight:800; font-size:clamp(14px,4vw,18px);
+    padding:9px 20px; border-radius:20px; box-shadow:0 4px 12px rgba(60,70,100,.3); white-space:nowrap; }
+
+  /* 弹窗: 白卡 */
+  #over { position:absolute; inset:-6px; z-index:60; display:none; align-items:center; justify-content:center; border-radius:12px; background:rgba(230,232,240,.72); backdrop-filter:blur(4px); }
   #over.show { display:flex; animation:fadeIn .3s ease; }
   @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
-  #overCard { text-align:center; color:#fff; padding:26px 30px; animation:cardIn .38s cubic-bezier(.34,1.4,.64,1); }
+  #overCard { text-align:center; color:#3a4256; padding:30px 38px; background:#fff; border-radius:22px;
+    box-shadow:0 10px 30px rgba(60,70,100,.3); animation:cardIn .38s cubic-bezier(.34,1.4,.64,1); }
   @keyframes cardIn { from{transform:scale(.72); opacity:0;} to{transform:scale(1); opacity:1;} }
   #overCard .big { font-size:clamp(52px,15vw,74px); }
-  #overCard h2 { font-size:clamp(22px,6.4vw,30px); margin:8px 0 6px; text-shadow:0 3px 0 rgba(0,0,0,.35); }
-  #overCard .sub { color:#9fb0e8; font-size:clamp(13px,3.8vw,16px); margin-bottom:22px; }
+  #overCard h2 { font-size:clamp(22px,6.4vw,30px); margin:8px 0 6px; }
+  #overCard .sub { color:#8a93ab; font-size:clamp(13px,3.8vw,16px); margin-bottom:22px; }
   #nextBtn { border:none; cursor:pointer; font-size:clamp(16px,4.6vw,20px); font-weight:800; color:#fff; padding:13px 42px; border-radius:14px;
-    background:linear-gradient(180deg,#ffb340,#ff8c1a); box-shadow:0 5px 0 #c96a08, 0 8px 14px rgba(0,0,0,.35); }
+    background:linear-gradient(180deg,#ffb340,#ff8c1a); box-shadow:0 5px 0 #c96a08, 0 8px 14px rgba(200,120,20,.35); }
   #nextBtn:active { transform:translateY(3px); box-shadow:0 2px 0 #c96a08; }
 
   #toast { position:fixed; left:50%; bottom:12%; transform:translateX(-50%) translateY(16px);
-    background:rgba(20,26,58,.92); color:#fff; font-weight:700; font-size:clamp(13px,3.8vw,16px);
+    background:rgba(58,66,86,.94); color:#fff; font-weight:700; font-size:clamp(13px,3.8vw,16px);
     padding:10px 26px; border-radius:22px; opacity:0; pointer-events:none; z-index:100; transition:all .25s ease; }
   #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 
-  #rotate { display:none; position:fixed; inset:0; z-index:99; background:#4a5aa8; color:#fff;
+  #rotate { display:none; position:fixed; inset:0; z-index:99; background:#e9eaf2; color:#3a4256;
     font-size:clamp(16px,3vh,22px); font-weight:800; text-align:center;
     align-items:center; justify-content:center; flex-direction:column; gap:14px; }
   #rotate .ph { font-size:44px; }
@@ -72,7 +97,7 @@
 <div id="game">
   <div id="topbar">
     <div id="title">🚪 Color Doors</div>
-    <div id="level">Level 1</div>
+    <div id="level">LEVEL 1</div>
     <div id="btns">
       <button class="cbtn" id="resetBtn" title="Reset">↺</button>
       <button class="cbtn" id="exitBtn" title="Exit">✕</button>
@@ -80,6 +105,7 @@
   </div>
   <div id="arena">
     <div id="boardwrap"><div id="board"></div></div>
+    <div id="tut"><div id="tutTip">Drag the block to the door!</div><div id="tutFinger">👆</div></div>
   </div>
   <div id="over"><div id="overCard">
     <div class="big">🎉</div>
@@ -111,7 +137,7 @@ function showToast(txt){
   clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),1400);
 }
 if(location.search.includes('reset')){
-  try{ localStorage.removeItem('cj_level'); }catch(e){}
+  try{ localStorage.removeItem('cj_level'); localStorage.removeItem('cj_tut'); }catch(e){}
   history.replaceState(null,'',location.pathname);
 }
 
@@ -204,7 +230,7 @@ function cellPx(){ return boardEl.clientWidth/N; }
 function newLevel(){
   boardEl.innerHTML=''; document.querySelectorAll('.door').forEach(d=>d.remove());
   playing=true;
-  document.getElementById('level').textContent='Level '+level;
+  document.getElementById('level').textContent='LEVEL '+level;
   document.getElementById('over').classList.remove('show');
   const data=getLevel(level);
   const s=cellPx();
@@ -283,6 +309,7 @@ function doorFor(b,side){
 }
 function exitBlock(b,side){
   b.out=true; sndOut(); vib([20,30,20]);
+  if(tutorialActive) endTutorial(true);
   const s=cellPx(), d=s*1.6;
   b.el.classList.add('exiting');
   if(side==='T') b.el.style.top=((b.r*s)-d)+'px';
@@ -311,12 +338,14 @@ document.addEventListener('pointerdown',e=>{
   drag={b, pid:e.pointerId, lastAct:Date.now(),
     grabR:b.r, grabC:b.c,
     startX:e.clientX, startY:e.clientY};
+  if(tutorialActive) document.getElementById('tut').classList.remove('show');
   sndPick();
   try{ el.setPointerCapture(e.pointerId); }catch(err){}
   e.preventDefault();
 });
 function dragTo(clientX,clientY){
   if(!drag||!playing) return;
+  if(cellPx()<=0) return;                        // 视口未渲染(0尺寸)时禁止拖动, 防坐标NaN
   drag.lastAct=Date.now();
   const b=drag.b, s=cellPx();
   // 目标原点 = 抓取时原点 + 手指位移(换算格)
@@ -345,7 +374,8 @@ function dragTo(clientX,clientY){
 }
 document.addEventListener('pointermove',e=>{ if(drag&&e.pointerId===drag.pid) dragTo(e.clientX,e.clientY); });
 document.addEventListener('touchmove',e=>{ if(!drag) return; const t=e.touches[0]; if(t) dragTo(t.clientX,t.clientY); },{passive:true});
-function endDrag(){ drag=null; }
+function endDrag(){ drag=null;
+  if(tutorialActive){ document.getElementById('tut').classList.add('show'); positionTutorial(); } }
 document.addEventListener('pointerup',e=>{ if(drag&&e.pointerId===drag.pid) endDrag(); });
 document.addEventListener('pointercancel',endDrag);
 document.addEventListener('touchend',e=>{ if(drag&&e.touches.length===0) setTimeout(()=>{ if(drag) endDrag(); },80); },{passive:true});
@@ -354,14 +384,47 @@ window.addEventListener('blur',endDrag);
 
 /* ================= 控制 ================= */
 document.getElementById('nextBtn').addEventListener('click',()=>newLevel());
-document.getElementById('resetBtn').addEventListener('click',e=>{ e.stopPropagation(); tone(500,0.08,{vol:0.2,slide:300}); newLevel(); });
+document.getElementById('resetBtn').addEventListener('click',e=>{ e.stopPropagation(); tone(500,0.08,{vol:0.2,slide:300}); newLevel(); if(tutorialActive) setTimeout(positionTutorial,60); });
 document.getElementById('exitBtn').addEventListener('click',e=>{ e.stopPropagation(); bridge.exit(); });
 document.getElementById('resetBtn').addEventListener('pointerdown',e=>e.stopPropagation());
 document.getElementById('exitBtn').addEventListener('pointerdown',e=>e.stopPropagation());
-window.addEventListener('resize',()=>newLevel());
+window.addEventListener('resize',()=>{ newLevel(); if(tutorialActive) setTimeout(positionTutorial,60); });
+
+/* ===== 新手引导: L1 手指演示拖块到门, 首次出门毕业 ===== */
+let tutorialActive=false;
+let tutTimer=null;
+function tutLoop(){
+  clearInterval(tutTimer);
+  tutTimer=setInterval(()=>{ if(tutorialActive) positionTutorial(); else clearInterval(tutTimer); },600);
+}
+function setupTutorial(){
+  if(store.get('cj_tut') || level!==1 || !blocks.length) return;
+  tutorialActive=true;
+  document.getElementById('tut').classList.add('show');
+  positionTutorial(); tutLoop();
+}
+function positionTutorial(){
+  if(!tutorialActive) return;
+  const ar=arenaEl.getBoundingClientRect();
+  const b=blocks.find(x=>!x.out); if(!b) return;
+  const bc=b.el.querySelector('.bc').getBoundingClientRect();
+  const door=document.querySelector('.door'); if(!door) return;
+  const dr=door.getBoundingClientRect();
+  const f=document.getElementById('tutFinger');
+  f.style.setProperty('--fx',(bc.left+bc.width/2-ar.left-14)+'px');
+  f.style.setProperty('--fy',(bc.top+bc.height/2-ar.top-6)+'px');
+  f.style.setProperty('--tx',(dr.left+dr.width/2-ar.left-14)+'px');
+  f.style.setProperty('--ty',(dr.top+dr.height/2-ar.top-6)+'px');
+  document.getElementById('tutTip').style.setProperty('--tipy',(bc.top-ar.top-58)+'px');
+}
+function endTutorial(grad){
+  document.getElementById('tut').classList.remove('show');
+  if(grad){ tutorialActive=false; store.set('cj_tut','1'); }
+}
 
 level=(+store.get('cj_level'))||1;
 newLevel();
+setupTutorial();
 /* 供测试脚本使用 */
 window.__cj={get blocks(){return blocks}, get level(){return level}, set level(v){level=v}, canBe, doorFor, newLevel, LEVELS, getLevel, cellsOf, occupied};
 </script>
