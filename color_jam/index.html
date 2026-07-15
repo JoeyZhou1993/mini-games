@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="description" content="Color Doors — slide blocks out through matching doors!">
+<meta name="theme-color" content="#4a5aa8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Color Doors</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+  html,body { height:100%; overflow:hidden; }
+  :root { --gw: min(92vw, 56vh); }
+  body {
+    background: radial-gradient(130% 90% at 50% 0%, #56649f 0%, #4a5aa8 48%, #3e4c90 100%);
+    font-family: -apple-system, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+    display:flex; align-items:center; justify-content:center;
+    touch-action:none;
+    padding: max(env(safe-area-inset-top), 18px) env(safe-area-inset-right) max(env(safe-area-inset-bottom), 10px) env(safe-area-inset-left);
+  }
+  #game { width:var(--gw); position:relative; }
+
+  #topbar { display:flex; align-items:center; justify-content:space-between; padding:2px 4px 12px; }
+  #title { color:#fff; font-weight:800; font-size:clamp(17px,4.6vw,22px); text-shadow:0 2px 3px rgba(0,0,0,.35); }
+  #level { color:#f5b93d; font-weight:800; font-size:clamp(15px,4.2vw,19px); text-shadow:0 2px 3px rgba(0,0,0,.35); }
+  .cbtn { border:none; cursor:pointer; width:clamp(34px,8.5vw,42px); height:clamp(34px,8.5vw,42px); border-radius:50%;
+    background:rgba(255,255,255,.16); color:#fff; font-size:clamp(17px,4.5vw,22px); font-weight:800; line-height:1;
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.18), 0 2px 5px rgba(0,0,0,.28); }
+  .cbtn:active { transform:scale(.92); }
+  #btns { display:flex; gap:10px; }
+
+  /* 棋盘容器: 留出门的外框空间 */
+  #arena { position:relative; width:100%; aspect-ratio:1; }
+  #boardwrap { position:absolute; inset:4.5%; background:#141d44; border-radius:8px;
+    box-shadow:0 5px 16px rgba(0,0,0,.4), inset 0 0 0 3px #0f1738; }
+  #board { position:absolute; inset:6px; }
+  .cellbg { position:absolute; background:#1d2a5e; border-radius:6%; box-shadow:inset 0 1px 3px rgba(0,0,0,.4); }
+  .door { position:absolute; border-radius:5px; box-shadow:0 0 12px var(--dc), inset 0 0 0 2px rgba(255,255,255,.35); }
+  .blockEl { position:absolute; touch-action:none; cursor:grab; z-index:10; }
+  .blockEl .bc { position:absolute; border-radius:10%;
+    box-shadow: inset 0 3px 0 rgba(255,255,255,.34), inset 0 -3px 0 rgba(0,0,0,.28); }
+  .blockEl.exiting { transition:left .28s ease-in, top .28s ease-in, opacity .28s; opacity:0; pointer-events:none; }
+  .blockEl.nope { animation:nope .28s ease; }
+  @keyframes nope { 25%{transform:translateX(-4px);} 50%{transform:translateX(4px);} 75%{transform:translateX(-2px);} }
+
+  /* 弹窗 */
+  #over { position:absolute; inset:-6px; z-index:60; display:none; align-items:center; justify-content:center; border-radius:12px; background:rgba(10,14,32,.85); backdrop-filter:blur(3px); }
+  #over.show { display:flex; animation:fadeIn .3s ease; }
+  @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
+  #overCard { text-align:center; color:#fff; padding:26px 30px; animation:cardIn .38s cubic-bezier(.34,1.4,.64,1); }
+  @keyframes cardIn { from{transform:scale(.72); opacity:0;} to{transform:scale(1); opacity:1;} }
+  #overCard .big { font-size:clamp(52px,15vw,74px); }
+  #overCard h2 { font-size:clamp(22px,6.4vw,30px); margin:8px 0 6px; text-shadow:0 3px 0 rgba(0,0,0,.35); }
+  #overCard .sub { color:#9fb0e8; font-size:clamp(13px,3.8vw,16px); margin-bottom:22px; }
+  #nextBtn { border:none; cursor:pointer; font-size:clamp(16px,4.6vw,20px); font-weight:800; color:#fff; padding:13px 42px; border-radius:14px;
+    background:linear-gradient(180deg,#ffb340,#ff8c1a); box-shadow:0 5px 0 #c96a08, 0 8px 14px rgba(0,0,0,.35); }
+  #nextBtn:active { transform:translateY(3px); box-shadow:0 2px 0 #c96a08; }
+
+  #toast { position:fixed; left:50%; bottom:12%; transform:translateX(-50%) translateY(16px);
+    background:rgba(20,26,58,.92); color:#fff; font-weight:700; font-size:clamp(13px,3.8vw,16px);
+    padding:10px 26px; border-radius:22px; opacity:0; pointer-events:none; z-index:100; transition:all .25s ease; }
+  #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+  #rotate { display:none; position:fixed; inset:0; z-index:99; background:#4a5aa8; color:#fff;
+    font-size:clamp(16px,3vh,22px); font-weight:800; text-align:center;
+    align-items:center; justify-content:center; flex-direction:column; gap:14px; }
+  #rotate .ph { font-size:44px; }
+  @media (orientation:landscape) and (max-height:520px) { #rotate { display:flex; } }
+</style>
+</head>
+<body>
+<div id="game">
+  <div id="topbar">
+    <div id="title">🚪 Color Doors</div>
+    <div id="level">Level 1</div>
+    <div id="btns">
+      <button class="cbtn" id="resetBtn" title="Reset">↺</button>
+      <button class="cbtn" id="exitBtn" title="Exit">✕</button>
+    </div>
+  </div>
+  <div id="arena">
+    <div id="boardwrap"><div id="board"></div></div>
+  </div>
+  <div id="over"><div id="overCard">
+    <div class="big">🎉</div>
+    <h2 id="overTitle">Level 1 complete!</h2>
+    <div class="sub">All blocks out!</div>
+    <button id="nextBtn">Next Level</button>
+  </div></div>
+</div>
+<div id="toast"></div>
+<div id="rotate"><div class="ph">📱</div><div>Rotate to portrait</div></div>
+
+<script>
+/* ================= App桥 / 存储 / Toast(同底座) ================= */
+const bridge={
+  fullScreen(on){ try{ if(window.android&&window.android.setFullScreen) window.android.setFullScreen(!!on); }catch(e){} },
+  exit(){ bridge.fullScreen(false);
+    try{ if(window.android&&window.android.exitGame){ window.android.exitGame(); return; } }catch(e){}
+    showToast('Exit'); }
+};
+bridge.fullScreen(true);
+const store={
+  get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+};
+let toastTimer=null;
+function showToast(txt){
+  const t=document.getElementById('toast');
+  t.textContent=txt; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),1400);
+}
+if(location.search.includes('reset')){
+  try{ localStorage.removeItem('cj_level'); }catch(e){}
+  history.replaceState(null,'',location.pathname);
+}
+
+/* ================= 音效 ================= */
+let AC=null, MASTER=null;
+function tone(f,dur,opt={}){ try{
+  const {type='sine',vol=0.22,at=0.008,slide=null,delay=0}=opt;
+  AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+  if(!MASTER){ const c=AC.createDynamicsCompressor(); c.threshold.value=-18; c.ratio.value=6; c.connect(AC.destination);
+    MASTER=AC.createGain(); MASTER.gain.value=1.7; MASTER.connect(c); }
+  if(AC.state==='suspended') AC.resume();
+  const t0=AC.currentTime+delay;
+  const o=AC.createOscillator(), g=AC.createGain();
+  o.type=type; o.frequency.setValueAtTime(f,t0);
+  if(slide) o.frequency.exponentialRampToValueAtTime(slide,t0+dur);
+  g.gain.setValueAtTime(0,t0); g.gain.linearRampToValueAtTime(vol,t0+at);
+  g.gain.exponentialRampToValueAtTime(0.001,t0+dur);
+  o.connect(g); g.connect(MASTER); o.start(t0); o.stop(t0+dur+0.03);
+}catch(e){} }
+const SC=[523.25,659.25,783.99,1046.5,1318.5];
+const sndPick=()=>tone(440,0.07,{type:'triangle',vol:0.3,slide:660});
+const sndSlide=()=>tone(300,0.04,{vol:0.1});
+const sndOut=()=>{ tone(SC[2],0.18,{type:'triangle',vol:0.4}); tone(SC[4],0.22,{vol:0.25,delay:0.08}); };
+const sndNope=()=>tone(160,0.09,{type:'triangle',vol:0.2});
+const sndWin=()=>{ [0,1,2,3,4].forEach(i=>{ tone(SC[i],0.26,{type:'triangle',vol:0.35,delay:i*0.1}); tone(SC[i]*2,0.16,{vol:0.1,delay:i*0.1}); }); tone(2093,0.5,{vol:0.13,delay:0.55}); };
+const vib=p=>{ try{ navigator.vibrate&&navigator.vibrate(p); }catch(e){} };
+
+/* ================= 宝石渲染(同blockblast) ================= */
+const COLORS=['#dc4437','#f0862c','#f5c235','#52b545','#3ab4ec','#9b51d6'];
+const gemCache=new Map();
+function gemBg(c){
+  let v=gemCache.get(c);
+  if(!v){
+    const t=`color-mix(in srgb,${c},#fff 45%)`, l=`color-mix(in srgb,${c},#fff 16%)`,
+          r=`color-mix(in srgb,${c},#000 20%)`, b=`color-mix(in srgb,${c},#000 40%)`;
+    v=`linear-gradient(${c},${c}) center/62% 62% no-repeat, conic-gradient(from -45deg, ${t} 0 90deg, ${r} 90deg 180deg, ${b} 180deg 270deg, ${l} 270deg 360deg)`;
+    gemCache.set(c,v);
+  }
+  return v;
+}
+
+/* ================= 关卡数据(6x6, 0-indexed) =================
+   门: [边T/B/L/R, 起始格, 长度, 颜色i] ; 块: [颜色i, [r,c], [r,c]...] */
+const N=6;
+const LEVELS=[
+  // L1 教学: 一块一门, 直接拖出
+  { doors:[['T',2,2,0]], blocks:[[0,[2,2],[2,3]]] },
+  // L2 两块两门
+  { doors:[['T',1,2,4],['R',3,2,1]], blocks:[[4,[2,1],[2,2]],[1,[3,3],[4,3]]] },
+  // L3 挡路: 蓝块横挡红块出上门, 先移蓝
+  { doors:[['T',2,2,0],['L',2,2,4]], blocks:[[0,[3,2],[3,3]],[4,[1,2],[1,3]]] },
+  // L4 三块
+  { doors:[['T',0,2,3],['B',4,2,2],['R',1,2,5]], blocks:[[3,[2,0],[2,1]],[2,[3,4],[3,5]],[5,[1,3],[2,3]]] },
+  // L5 L形块登场
+  { doors:[['T',2,2,1],['L',3,2,4]], blocks:[[1,[2,2],[2,3],[3,3]],[4,[4,1],[4,2]]] },
+  // L6 交叉让路
+  { doors:[['T',1,2,0],['B',3,2,4],['R',2,2,2]], blocks:[[0,[3,1],[4,1]],[4,[1,3],[1,4]],[2,[2,2],[2,3]]] },
+  // L7 四块
+  { doors:[['T',0,2,5],['T',4,2,3],['B',1,2,1],['B',4,2,0]],
+    blocks:[[5,[2,0],[2,1]],[3,[3,4],[3,5]],[1,[4,1],[4,2]],[0,[1,4],[1,5]]] },
+  // L8 长条3
+  { doors:[['L',1,3,2],['R',3,2,4],['T',3,2,0]],
+    blocks:[[2,[1,2],[2,2],[3,2]],[4,[3,3],[3,4]],[0,[0,3],[0,4]]] },
+  // L9 中心拥堵
+  { doors:[['T',2,2,4],['B',2,2,1],['L',2,2,3],['R',2,2,0]],
+    blocks:[[4,[2,2],[2,3]],[1,[4,2],[4,3]],[3,[3,0],[3,1]],[0,[3,4],[3,5]]] },
+  // L10 五块
+  { doors:[['T',0,2,0],['T',3,2,2],['B',0,2,4],['B',4,2,5],['L',3,2,1]],
+    blocks:[[0,[1,0],[1,1]],[2,[2,3],[2,4]],[4,[4,0],[4,1]],[5,[4,4],[5,4]],[1,[3,2],[3,3]]] },
+  // L11 L形组合
+  { doors:[['T',1,2,3],['R',0,2,0],['B',2,2,5]],
+    blocks:[[3,[2,1],[2,2],[3,1]],[0,[0,3],[1,3],[1,4]],[5,[4,2],[4,3],[3,3]]] },
+  // L12 大堵车
+  { doors:[['T',2,2,1],['B',2,2,0],['L',1,2,2],['R',4,2,4],['R',1,2,3]],
+    blocks:[[1,[3,2],[3,3]],[0,[5,2],[5,3]],[2,[1,1],[2,1]],[4,[4,4],[4,5],[5,4]],[3,[1,4],[2,4]]] },
+];
+function getLevel(L){
+  // 关卡循环: 打穿12关后从第5关随机复用(颜色洗牌)
+  if(L<=LEVELS.length) return LEVELS[L-1];
+  const base=LEVELS[4+~~(Math.random()*(LEVELS.length-4))];
+  const perm=[0,1,2,3,4,5].sort(()=>Math.random()-.5);
+  return { doors:base.doors.map(d=>[d[0],d[1],d[2],perm[d[3]]]),
+           blocks:base.blocks.map(b=>[perm[b[0]],...b.slice(1)]) };
+}
+
+/* ================= 棋盘渲染 ================= */
+const boardEl=document.getElementById('board'), arenaEl=document.getElementById('arena');
+let level=1, blocks=[], playing=true;
+function cellPx(){ return boardEl.clientWidth/N; }
+function newLevel(){
+  boardEl.innerHTML=''; document.querySelectorAll('.door').forEach(d=>d.remove());
+  playing=true;
+  document.getElementById('level').textContent='Level '+level;
+  document.getElementById('over').classList.remove('show');
+  const data=getLevel(level);
+  const s=cellPx();
+  // 格子底
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+    const d=document.createElement('div'); d.className='cellbg';
+    d.style.cssText=`left:${c*s+2}px;top:${r*s+2}px;width:${s-4}px;height:${s-4}px`;
+    boardEl.appendChild(d);
+  }
+  // 门(挂在arena上, 贴boardwrap外缘)
+  const bw=document.getElementById('boardwrap');
+  const bwR=bw.getBoundingClientRect(), arR=arenaEl.getBoundingClientRect(), bdR=boardEl.getBoundingClientRect();
+  const off={x:bdR.left-arR.left, y:bdR.top-arR.top};
+  const TH=Math.max(bwR.left-arR.left, 10)*0.9;   // 门厚度≈外框留白
+  for(const [side,st,len,ci] of data.doors){
+    const d=document.createElement('div'); d.className='door';
+    d.style.setProperty('--dc',COLORS[ci]); d.style.background=gemBg(COLORS[ci]);
+    if(side==='T') d.style.cssText+=`left:${off.x+st*s+3}px;top:${off.y-TH-4}px;width:${len*s-6}px;height:${TH}px`;
+    if(side==='B') d.style.cssText+=`left:${off.x+st*s+3}px;top:${off.y+N*s+4}px;width:${len*s-6}px;height:${TH}px`;
+    if(side==='L') d.style.cssText+=`left:${off.x-TH-4}px;top:${off.y+st*s+3}px;width:${TH}px;height:${len*s-6}px`;
+    if(side==='R') d.style.cssText+=`left:${off.x+N*s+4}px;top:${off.y+st*s+3}px;width:${TH}px;height:${len*s-6}px`;
+    arenaEl.appendChild(d);
+  }
+  // 块
+  blocks=data.blocks.map((b,bi)=>{
+    const [ci,...cells]=b;
+    const el=document.createElement('div'); el.className='blockEl'; el.dataset.bi=bi;
+    const minR=Math.min(...cells.map(x=>x[0])), minC=Math.min(...cells.map(x=>x[1]));
+    for(const [r,c] of cells){
+      const p=document.createElement('div'); p.className='bc';
+      p.style.cssText=`left:${(c-minC)*s+2}px;top:${(r-minR)*s+2}px;width:${s-4}px;height:${s-4}px;background:${gemBg(COLORS[ci])}`;
+      el.appendChild(p);
+    }
+    boardEl.appendChild(el);
+    const blk={ci, r:minR, c:minC, shape:cells.map(([r,c])=>[r-minR,c-minC]), el, out:false};
+    place(blk);
+    return blk;
+  });
+  layoutDoorsData=data.doors;
+}
+let layoutDoorsData=[];
+function place(b){
+  const s=cellPx();
+  b.el.style.left=(b.c*s)+'px'; b.el.style.top=(b.r*s)+'px';
+}
+function cellsOf(b,r,c){ return b.shape.map(([dr,dc])=>[r+dr, c+dc]); }
+function occupied(except){
+  const set=new Set();
+  for(const b of blocks){ if(b.out||b===except) continue;
+    for(const [r,c] of cellsOf(b,b.r,b.c)) set.add(r+','+c); }
+  return set;
+}
+/* 尝试把块移到 (nr,nc): 界内且不重叠 → true */
+function canBe(b,nr,nc){
+  const occ=occupied(b);
+  for(const [r,c] of cellsOf(b,nr,nc)){
+    if(r<0||c<0||r>=N||c>=N) return false;
+    if(occ.has(r+','+c)) return false;
+  }
+  return true;
+}
+/* 出门判定: 块朝side方向贴边, 且该侧投影范围∈某同色门 */
+function doorFor(b,side){
+  const cells=cellsOf(b,b.r,b.c);
+  const rs=cells.map(x=>x[0]), cs=cells.map(x=>x[1]);
+  if(side==='T'&&Math.min(...rs)!==0) return null;
+  if(side==='B'&&Math.max(...rs)!==N-1) return null;
+  if(side==='L'&&Math.min(...cs)!==0) return null;
+  if(side==='R'&&Math.max(...cs)!==N-1) return null;
+  const span=(side==='T'||side==='B')? [Math.min(...cs),Math.max(...cs)] : [Math.min(...rs),Math.max(...rs)];
+  for(const [ds,st,len,ci] of layoutDoorsData){
+    if(ds!==side||ci!==b.ci) continue;
+    if(span[0]>=st && span[1]<st+len) return [ds,st,len,ci];
+  }
+  return null;
+}
+function exitBlock(b,side){
+  b.out=true; sndOut(); vib([20,30,20]);
+  const s=cellPx(), d=s*1.6;
+  b.el.classList.add('exiting');
+  if(side==='T') b.el.style.top=((b.r*s)-d)+'px';
+  if(side==='B') b.el.style.top=((b.r*s)+d)+'px';
+  if(side==='L') b.el.style.left=((b.c*s)-d)+'px';
+  if(side==='R') b.el.style.left=((b.c*s)+d)+'px';
+  setTimeout(()=>b.el.remove(),300);
+  if(blocks.every(x=>x.out)){
+    playing=false;
+    setTimeout(()=>{ sndWin(); vib([50,60,50,60,80]);
+      document.getElementById('overTitle').textContent=`Level ${level} complete!`;
+      document.getElementById('over').classList.add('show');
+      level++; store.set('cj_level',level);
+    },450);
+  }
+}
+
+/* ================= 拖拽(blockbast 底座: capture+touch兜底+自愈) ================= */
+let drag=null;
+document.addEventListener('pointerdown',e=>{
+  if(!playing) return;
+  if(drag){ if(Date.now()-(drag.lastAct||0)>600) drag=null; else return; }
+  const el=e.target.closest('.blockEl'); if(!el) return;
+  const b=blocks[+el.dataset.bi]; if(!b||b.out) return;
+  const s=cellPx();
+  drag={b, pid:e.pointerId, lastAct:Date.now(),
+    grabR:b.r, grabC:b.c,
+    startX:e.clientX, startY:e.clientY};
+  sndPick();
+  try{ el.setPointerCapture(e.pointerId); }catch(err){}
+  e.preventDefault();
+});
+function dragTo(clientX,clientY){
+  if(!drag||!playing) return;
+  drag.lastAct=Date.now();
+  const b=drag.b, s=cellPx();
+  // 目标原点 = 抓取时原点 + 手指位移(换算格)
+  const tr=drag.grabR+Math.round((clientY-drag.startY)/s);
+  const tc=drag.grabC+Math.round((clientX-drag.startX)/s);
+  // 逐格贪心滑向目标(主轴优先), 撞墙/撞块即停; 越界尝试=出门检测
+  let guard=24;
+  while(guard-- && (b.r!==tr||b.c!==tc)){
+    const dr=Math.sign(tr-b.r), dc=Math.sign(tc-b.c);
+    let moved=false;
+    const tryStep=(sr,sc)=>{
+      if(sr===0&&sc===0) return false;
+      if(canBe(b,b.r+sr,b.c+sc)){ b.r+=sr; b.c+=sc; place(b); sndSlide(); return true; }
+      // 越界方向: 出门检测
+      const side= sr<0?'T': sr>0?'B': sc<0?'L':'R';
+      const cells=cellsOf(b,b.r+sr,b.c+sc);
+      const outside=cells.some(([r,c])=>r<0||c<0||r>=N||c>=N);
+      if(outside && doorFor(b,side)){ exitBlock(b,side); drag=null; return true; }
+      return false;
+    };
+    // 位移大的轴优先
+    if(Math.abs(tr-b.r)>=Math.abs(tc-b.c)) moved=tryStep(dr,0)||tryStep(0,dc);
+    else moved=tryStep(0,dc)||tryStep(dr,0);
+    if(!moved||!drag) break;
+  }
+}
+document.addEventListener('pointermove',e=>{ if(drag&&e.pointerId===drag.pid) dragTo(e.clientX,e.clientY); });
+document.addEventListener('touchmove',e=>{ if(!drag) return; const t=e.touches[0]; if(t) dragTo(t.clientX,t.clientY); },{passive:true});
+function endDrag(){ drag=null; }
+document.addEventListener('pointerup',e=>{ if(drag&&e.pointerId===drag.pid) endDrag(); });
+document.addEventListener('pointercancel',endDrag);
+document.addEventListener('touchend',e=>{ if(drag&&e.touches.length===0) setTimeout(()=>{ if(drag) endDrag(); },80); },{passive:true});
+document.addEventListener('touchcancel',endDrag,{passive:true});
+window.addEventListener('blur',endDrag);
+
+/* ================= 控制 ================= */
+document.getElementById('nextBtn').addEventListener('click',()=>newLevel());
+document.getElementById('resetBtn').addEventListener('click',e=>{ e.stopPropagation(); tone(500,0.08,{vol:0.2,slide:300}); newLevel(); });
+document.getElementById('exitBtn').addEventListener('click',e=>{ e.stopPropagation(); bridge.exit(); });
+document.getElementById('resetBtn').addEventListener('pointerdown',e=>e.stopPropagation());
+document.getElementById('exitBtn').addEventListener('pointerdown',e=>e.stopPropagation());
+window.addEventListener('resize',()=>newLevel());
+
+level=(+store.get('cj_level'))||1;
+newLevel();
+/* 供测试脚本使用 */
+window.__cj={get blocks(){return blocks}, get level(){return level}, set level(v){level=v}, canBe, doorFor, newLevel, LEVELS, getLevel, cellsOf, occupied};
+</script>
+</body>
+</html>

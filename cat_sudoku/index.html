@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="description" content="Cat Sudoku — cozy sudoku with cats!">
+<meta name="theme-color" content="#4a5aa8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Cat Sudoku</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+  html,body { height:100%; overflow:hidden; }
+  :root { --gw: min(96vw, 52vh); }
+  body {
+    background: radial-gradient(130% 90% at 50% 0%, #56649f 0%, #4a5aa8 48%, #3e4c90 100%);
+    font-family: -apple-system, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+    display:flex; align-items:center; justify-content:center;
+    touch-action:manipulation;
+    padding: max(env(safe-area-inset-top), 18px) env(safe-area-inset-right) max(env(safe-area-inset-bottom), 10px) env(safe-area-inset-left);
+  }
+  #game { width:var(--gw); position:relative; }
+
+  /* 顶栏 */
+  #topbar { display:flex; align-items:center; justify-content:space-between; padding:2px 4px 10px; }
+  #title { display:flex; align-items:center; gap:8px; color:#fff; font-weight:800; font-size:clamp(17px,4.6vw,22px); text-shadow:0 2px 3px rgba(0,0,0,.35); }
+  #title .cat { font-size:1.3em; }
+  #level { color:#f5b93d; font-weight:800; font-size:clamp(15px,4.2vw,19px); text-shadow:0 2px 3px rgba(0,0,0,.35); }
+  #restart { border:none; cursor:pointer; width:clamp(34px,8.5vw,42px); height:clamp(34px,8.5vw,42px); border-radius:50%;
+    background:rgba(255,255,255,.16); color:#fff; font-size:clamp(17px,4.5vw,22px); font-weight:800; line-height:1;
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.18), 0 2px 5px rgba(0,0,0,.28); }
+  #restart:active { transform:scale(.92); }
+
+  /* 棋盘 */
+  #boardwrap { background:#141d44; border-radius:10px; padding:5px; box-shadow:0 5px 16px rgba(0,0,0,.4), inset 0 0 0 3px #0f1738; }
+  #board { display:grid; grid-template-columns:repeat(9,1fr); grid-template-rows:repeat(9,1fr); aspect-ratio:1; gap:0;
+    background:#39457f; border:2px solid #39457f; border-radius:6px; overflow:hidden; }
+  .sq { background:#1d2a5e; display:flex; align-items:center; justify-content:center;
+    font-size:calc(var(--gw)/16); font-weight:700; color:#7fa8f0; position:relative;
+    border-right:1px solid #2a3568; border-bottom:1px solid #2a3568; }
+  .sq.bR { border-right:2px solid #4a5aa8; }
+  .sq.bB { border-bottom:2px solid #4a5aa8; }
+  .sq.given { color:#fff; font-weight:800; }
+  .sq.sel { background:#3a4f9e !important; box-shadow:inset 0 0 0 2px #7fb2ff; }
+  .sq.same { background:#28407c; }
+  .sq.line { background:#223263; }
+  .sq.err { color:#ff7a70 !important; }
+  .sq.flash { animation:okFlash .5s ease; }
+  @keyframes okFlash { 30%{background:#2f7a4d;} }
+
+  /* 数字键盘 */
+  #pad { display:grid; grid-template-columns:repeat(9,1fr); gap:5px; margin-top:12px; }
+  .key { aspect-ratio:0.86; border:none; border-radius:8px; background:rgba(255,255,255,.14); color:#fff;
+    font-size:calc(var(--gw)/15); font-weight:800; cursor:pointer;
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.14), 0 2px 4px rgba(0,0,0,.25);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .key:active { transform:scale(.93); }
+  .key .cnt { font-size:.42em; font-weight:700; color:#aebbf0; }
+  .key.done { opacity:.25; pointer-events:none; }
+  #tools { display:flex; gap:8px; margin-top:8px; }
+  .tool { flex:1; border:none; border-radius:10px; padding:11px 0; background:rgba(255,255,255,.14); color:#fff;
+    font-size:clamp(14px,3.8vw,17px); font-weight:800; cursor:pointer;
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.14), 0 2px 4px rgba(0,0,0,.25); }
+  .tool:active { transform:scale(.96); }
+  .tool.off { opacity:.35; pointer-events:none; }
+
+  /* 胜利弹窗 */
+  #over { position:absolute; inset:-6px; z-index:60; display:none; align-items:center; justify-content:center; border-radius:12px; background:rgba(10,14,32,.85); backdrop-filter:blur(3px); }
+  #over.show { display:flex; animation:fadeIn .3s ease; }
+  @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
+  #overCard { text-align:center; color:#fff; padding:26px 30px; animation:cardIn .38s cubic-bezier(.34,1.4,.64,1); }
+  @keyframes cardIn { from{transform:scale(.72); opacity:0;} to{transform:scale(1); opacity:1;} }
+  #overCard .bigcat { font-size:clamp(52px,15vw,74px); animation:catBounce 1s ease infinite alternate; }
+  @keyframes catBounce { from{transform:translateY(0);} to{transform:translateY(-10px);} }
+  #overCard h2 { font-size:clamp(22px,6.4vw,30px); margin:8px 0 6px; text-shadow:0 3px 0 rgba(0,0,0,.35); }
+  #overCard .sub { color:#9fb0e8; font-size:clamp(13px,3.8vw,16px); margin-bottom:22px; }
+  #nextBtn { border:none; cursor:pointer; font-size:clamp(16px,4.6vw,20px); font-weight:800; color:#fff; padding:13px 42px; border-radius:14px;
+    background:linear-gradient(180deg,#ffb340,#ff8c1a); box-shadow:0 5px 0 #c96a08, 0 8px 14px rgba(0,0,0,.35); }
+  #nextBtn:active { transform:translateY(3px); box-shadow:0 2px 0 #c96a08; }
+
+  /* 猫雨 */
+  .catRain { position:absolute; z-index:55; font-size:30px; pointer-events:none; animation:catFall 2.2s linear forwards; }
+  @keyframes catFall { from{transform:translateY(-50px) rotate(-15deg); opacity:1;} to{transform:translateY(110vh) rotate(20deg); opacity:.8;} }
+
+  /* Toast */
+  #toast { position:fixed; left:50%; bottom:12%; transform:translateX(-50%) translateY(16px);
+    background:rgba(20,26,58,.92); color:#fff; font-weight:700; font-size:clamp(13px,3.8vw,16px);
+    padding:10px 26px; border-radius:22px; opacity:0; pointer-events:none; z-index:100; transition:all .25s ease; }
+  #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+  /* 横屏提示 */
+  #rotate { display:none; position:fixed; inset:0; z-index:99; background:#4a5aa8; color:#fff;
+    font-size:clamp(16px,3vh,22px); font-weight:800; text-align:center;
+    align-items:center; justify-content:center; flex-direction:column; gap:14px; }
+  #rotate .ph { font-size:44px; }
+  @media (orientation:landscape) and (max-height:520px) { #rotate { display:flex; } }
+</style>
+</head>
+<body>
+<div id="game">
+  <div id="topbar">
+    <div id="title"><span class="cat">😺</span>Cat Sudoku</div>
+    <div id="level">Level 1</div>
+    <button id="restart" title="Exit">✕</button>
+  </div>
+  <div id="boardwrap"><div id="board"></div></div>
+  <div id="pad"></div>
+  <div id="tools">
+    <button class="tool" id="eraseBtn">🧽 Erase</button>
+    <button class="tool" id="hintBtn">💡 Hint (3)</button>
+  </div>
+  <div id="over"><div id="overCard">
+    <div class="bigcat">😻</div>
+    <h2 id="overTitle">Level 1 complete!</h2>
+    <div class="sub" id="overSub">Great job!</div>
+    <button id="nextBtn">Next Level</button>
+  </div></div>
+</div>
+<div id="toast"></div>
+<div id="rotate"><div class="ph">📱</div><div>Rotate to portrait</div></div>
+
+<script>
+/* ================= App桥(WebView内 window.android; 浏览器降级) ================= */
+const bridge={
+  fullScreen(on){ try{ if(window.android&&window.android.setFullScreen) window.android.setFullScreen(!!on); }catch(e){} },
+  exit(){
+    bridge.fullScreen(false);
+    try{ if(window.android&&window.android.exitGame){ window.android.exitGame(); return; } }catch(e){}
+    showToast('Exit');
+  }
+};
+bridge.fullScreen(true);
+
+/* ================= 存储/Toast ================= */
+const store={
+  get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+};
+let toastTimer=null;
+function showToast(txt){
+  const t=document.getElementById('toast');
+  t.textContent=txt; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),1400);
+}
+if(location.search.includes('reset')){
+  try{ localStorage.removeItem('cs_level'); }catch(e){}
+  history.replaceState(null,'',location.pathname);
+}
+
+/* ================= 音效(WebAudio, 同blockblast引擎) ================= */
+let AC=null, MASTER=null;
+function tone(f,dur,opt={}){ try{
+  const {type='sine',vol=0.22,at=0.008,slide=null,delay=0}=opt;
+  AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+  if(!MASTER){ const c=AC.createDynamicsCompressor(); c.threshold.value=-18; c.ratio.value=6; c.connect(AC.destination);
+    MASTER=AC.createGain(); MASTER.gain.value=1.7; MASTER.connect(c); }
+  if(AC.state==='suspended') AC.resume();
+  const t0=AC.currentTime+delay;
+  const o=AC.createOscillator(), g=AC.createGain();
+  o.type=type; o.frequency.setValueAtTime(f,t0);
+  if(slide) o.frequency.exponentialRampToValueAtTime(slide,t0+dur);
+  g.gain.setValueAtTime(0,t0); g.gain.linearRampToValueAtTime(vol,t0+at);
+  g.gain.exponentialRampToValueAtTime(0.001,t0+dur);
+  o.connect(g); g.connect(MASTER); o.start(t0); o.stop(t0+dur+0.03);
+}catch(e){} }
+const SC=[523.25,659.25,783.99,1046.5,1318.5];
+const sndTap=()=>tone(660,0.05,{vol:0.14});
+const sndPlace=()=>{ tone(520,0.08,{vol:0.4,slide:260}); };
+const sndErr=()=>{ tone(170,0.1,{type:'triangle',vol:0.25}); tone(120,0.14,{type:'triangle',vol:0.25,delay:0.1}); };
+const sndHint=()=>{ tone(880,0.1,{vol:0.25}); tone(1174,0.16,{vol:0.2,delay:0.09}); };
+const sndWin=()=>{ [0,1,2,3,4].forEach(i=>{ tone(SC[i],0.26,{type:'triangle',vol:0.35,delay:i*0.1}); tone(SC[i]*2,0.16,{vol:0.1,delay:i*0.1}); }); tone(2093,0.5,{vol:0.13,delay:0.55}); };
+const vib=p=>{ try{ navigator.vibrate&&navigator.vibrate(p); }catch(e){} };
+
+/* ================= 数独核心(挖洞法+唯一解校验, 已压测<120ms) ================= */
+function genFull(){
+  const g=Array(81).fill(0);
+  const ok=(i,v)=>{ const r=~~(i/9),c=i%9,br=~~(r/3)*3,bc=~~(c/3)*3;
+    for(let k=0;k<9;k++){ if(g[r*9+k]===v||g[k*9+c]===v) return false;
+      if(g[(br+~~(k/3))*9+bc+k%3]===v) return false; } return true; };
+  const fill=i=>{ if(i===81) return true;
+    const vs=[1,2,3,4,5,6,7,8,9].sort(()=>Math.random()-.5);
+    for(const v of vs){ if(ok(i,v)){ g[i]=v; if(fill(i+1)) return true; g[i]=0; } }
+    return false; };
+  fill(0); return g;
+}
+function countSolutions(p,limit){
+  const g=p.slice(); let n=0;
+  const ok=(i,v)=>{ const r=~~(i/9),c=i%9,br=~~(r/3)*3,bc=~~(c/3)*3;
+    for(let k=0;k<9;k++){ if(g[r*9+k]===v||g[k*9+c]===v) return false;
+      if(g[(br+~~(k/3))*9+bc+k%3]===v) return false; } return true; };
+  (function solve(){ if(n>=limit) return;
+    const i=g.indexOf(0); if(i<0){ n++; return; }
+    for(let v=1;v<=9&&n<limit;v++){ if(ok(i,v)){ g[i]=v; solve(); g[i]=0; } } })();
+  return n;
+}
+function makePuzzle(holes){
+  const full=genFull(), p=full.slice();
+  const idx=[...Array(81).keys()].sort(()=>Math.random()-.5);
+  let dug=0;
+  for(const i of idx){ if(dug>=holes) break;
+    const keep=p[i]; p[i]=0;
+    if(countSolutions(p,2)===1) dug++; else p[i]=keep; }
+  return {puzzle:p, solution:full};
+}
+
+/* ================= 游戏状态 ================= */
+const boardEl=document.getElementById('board');
+let level=1, puzzle=[], solution=[], user=[], selected=-1, hints=3, playing=true;
+const sqs=[];
+for(let i=0;i<81;i++){
+  const d=document.createElement('div'); d.className='sq';
+  const c=i%9, r=~~(i/9);
+  if(c===2||c===5) d.classList.add('bR');
+  if(r===2||r===5) d.classList.add('bB');
+  d.addEventListener('click',()=>selectSq(i));
+  boardEl.appendChild(d); sqs.push(d);
+}
+/* 数字键盘 */
+const padEl=document.getElementById('pad'), keys=[];
+for(let v=1;v<=9;v++){
+  const k=document.createElement('button'); k.className='key';
+  k.innerHTML=`${v}<span class="cnt">9</span>`;
+  k.addEventListener('click',()=>inputNum(v));
+  padEl.appendChild(k); keys.push(k);
+}
+
+function newLevel(){
+  const holes=Math.min(28+level*2, 54);          // 难度爬坡: 第1关30洞 → 第13关+封顶54洞
+  const {puzzle:p, solution:s}=makePuzzle(holes);
+  puzzle=p; solution=s; user=p.slice();
+  selected=-1; hints=3; playing=true;
+  document.getElementById('level').textContent='Level '+level;
+  document.getElementById('hintBtn').textContent='💡 Hint (3)';
+  document.getElementById('hintBtn').classList.remove('off');
+  document.getElementById('over').classList.remove('show');
+  render();
+}
+function render(){
+  for(let i=0;i<81;i++){
+    const el=sqs[i], v=user[i];
+    el.textContent = v||'';
+    el.classList.toggle('given', puzzle[i]!==0);
+    el.classList.toggle('err', v!==0 && puzzle[i]===0 && v!==solution[i]);
+    el.classList.toggle('sel', i===selected);
+    // 同数/行列宫辅助高亮
+    el.classList.remove('same','line');
+    if(selected>=0){
+      const sv=user[selected], sr=~~(selected/9), sc=selected%9;
+      const r=~~(i/9), c=i%9;
+      if(i!==selected){
+        if(sv && v===sv) el.classList.add('same');
+        else if(r===sr||c===sc||(~~(r/3)===~~(sr/3)&&~~(c/3)===~~(sc/3))) el.classList.add('line');
+      }
+    }
+  }
+  // 数字键剩余计数: 用满9个变暗
+  for(let v=1;v<=9;v++){
+    const used=user.filter(x=>x===v).length;
+    keys[v-1].innerHTML=`${v}<span class="cnt">${Math.max(9-used,0)}</span>`;
+    keys[v-1].classList.toggle('done', used>=9);
+  }
+}
+function selectSq(i){
+  if(!playing) return;
+  selected=i; sndTap(); render();
+}
+function inputNum(v){
+  if(!playing || selected<0 || puzzle[selected]!==0) return;
+  user[selected]=v;
+  if(v===solution[selected]){ sndPlace(); vib(8); sqs[selected].classList.add('flash'); setTimeout(()=>sqs[selected].classList.remove('flash'),500); }
+  else { sndErr(); vib([40,50,40]); }
+  render();
+  checkWin();
+}
+document.getElementById('eraseBtn').addEventListener('click',()=>{
+  if(!playing || selected<0 || puzzle[selected]!==0) return;
+  user[selected]=0; sndTap(); render();
+});
+document.getElementById('hintBtn').addEventListener('click',()=>{
+  if(!playing || hints<=0) return;
+  // 优先填选中的空格, 否则随机一个空格
+  let target=selected;
+  if(target<0 || user[target]===solution[target]){
+    const empties=[...Array(81).keys()].filter(i=>user[i]!==solution[i]);
+    if(!empties.length) return;
+    target=empties[~~(Math.random()*empties.length)];
+  }
+  user[target]=solution[target]; selected=target;
+  hints--; sndHint(); vib(15);
+  const btn=document.getElementById('hintBtn');
+  btn.textContent=`💡 Hint (${hints})`;
+  if(hints<=0) btn.classList.add('off');
+  sqs[target].classList.add('flash'); setTimeout(()=>sqs[target].classList.remove('flash'),500);
+  render(); checkWin();
+});
+function checkWin(){
+  for(let i=0;i<81;i++) if(user[i]!==solution[i]) return;
+  playing=false;
+  sndWin(); vib([50,60,50,60,80]);
+  // 猫雨
+  const cats=['😺','😸','😻','🐱','😽','🐈'];
+  for(let k=0;k<14;k++){
+    const c=document.createElement('div'); c.className='catRain'; c.textContent=cats[k%cats.length];
+    c.style.left=(5+Math.random()*90)+'%'; c.style.top='-40px';
+    c.style.animationDelay=(Math.random()*0.9)+'s';
+    document.getElementById('game').appendChild(c);
+    setTimeout(()=>c.remove(),3400);
+  }
+  document.getElementById('overTitle').textContent=`Level ${level} complete!`;
+  document.getElementById('overSub').textContent='Great job! 🐾';
+  setTimeout(()=>document.getElementById('over').classList.add('show'),900);
+  level++; store.set('cs_level',level);
+}
+document.getElementById('nextBtn').addEventListener('click',()=>newLevel());
+document.getElementById('restart').addEventListener('click',e=>{ e.stopPropagation(); bridge.exit(); });
+
+level=(+store.get('cs_level'))||1;
+newLevel();
+</script>
+</body>
+</html>

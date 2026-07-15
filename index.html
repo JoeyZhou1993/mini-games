@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="description" content="Mini Games — a collection of single-file HTML5 games">
+<meta name="theme-color" content="#4a5aa8">
+<title>Mini Games</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { min-height:100%; }
+  body {
+    background: radial-gradient(130% 90% at 50% 0%, #56649f 0%, #4a5aa8 48%, #3e4c90 100%);
+    font-family: -apple-system, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+    display:flex; align-items:center; justify-content:center;
+    padding: max(env(safe-area-inset-top),24px) 16px max(env(safe-area-inset-bottom),24px);
+  }
+  #wrap { width:min(94vw, 420px); }
+  h1 { color:#fff; font-size:clamp(26px,7vw,34px); font-weight:900; text-align:center;
+    text-shadow:0 3px 0 rgba(0,0,0,.28), 0 8px 20px rgba(0,0,0,.35); margin-bottom:6px; }
+  .sub { color:#cdd6ff; text-align:center; font-weight:700; font-size:clamp(13px,3.6vw,15px); margin-bottom:26px;
+    text-shadow:0 2px 4px rgba(0,0,0,.35); }
+  .card { display:flex; align-items:center; gap:16px; text-decoration:none;
+    background:rgba(20,29,68,.85); border-radius:16px; padding:16px 18px; margin-bottom:14px;
+    box-shadow:0 5px 16px rgba(0,0,0,.35), inset 0 0 0 2px rgba(255,255,255,.07);
+    transition:transform .15s ease, box-shadow .15s ease; }
+  .card:active { transform:scale(.97); }
+  .card .icon { font-size:38px; width:56px; height:56px; display:flex; align-items:center; justify-content:center;
+    background:rgba(255,255,255,.1); border-radius:14px; flex-shrink:0; }
+  .card .txt { flex:1; }
+  .card .name { color:#fff; font-weight:800; font-size:clamp(17px,4.6vw,20px); }
+  .card .desc { color:#9fb0e8; font-weight:600; font-size:clamp(12px,3.4vw,14px); margin-top:2px; }
+  .card .go { color:#f5b93d; font-size:22px; font-weight:900; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>🎮 Mini Games</h1>
+  <div class="sub">Pick a game and play — no install, no ads</div>
+  <a class="card" href="block_blast/">
+    <div class="icon">🟦</div>
+    <div class="txt"><div class="name">Block Blast</div><div class="desc">Drag blocks, clear lines, chase your record</div></div>
+    <div class="go">›</div>
+  </a>
+  <a class="card" href="cat_sudoku/">
+    <div class="icon">😺</div>
+    <div class="txt"><div class="name">Cat Sudoku</div><div class="desc">Classic sudoku with cozy cat vibes</div></div>
+    <div class="go">›</div>
+  </a>
+  <a class="card" href="triple_match/">
+    <div class="icon">🧺</div>
+    <div class="txt"><div class="name">Triple Match</div><div class="desc">Collect three of a kind, clear the board</div></div>
+    <div class="go">›</div>
+  </a>
+  <a class="card" href="color_jam/">
+    <div class="icon">🚪</div>
+    <div class="txt"><div class="name">Color Doors</div><div class="desc">Slide blocks out through matching doors</div></div>
+    <div class="go">›</div>
+  </a>
+</div>
+</body>
+</html>

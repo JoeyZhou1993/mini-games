@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="description" content="Triple Match — collect three of a kind, clear them all!">
+<meta name="theme-color" content="#4a5aa8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Triple Match</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+  html,body { height:100%; overflow:hidden; }
+  :root { --gw: min(96vw, 54vh); }
+  body {
+    background: radial-gradient(130% 90% at 50% 0%, #56649f 0%, #4a5aa8 48%, #3e4c90 100%);
+    font-family: -apple-system, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+    display:flex; align-items:center; justify-content:center;
+    touch-action:manipulation;
+    padding: max(env(safe-area-inset-top), 18px) env(safe-area-inset-right) max(env(safe-area-inset-bottom), 10px) env(safe-area-inset-left);
+  }
+  #game { width:var(--gw); position:relative; }
+
+  #topbar { display:flex; align-items:center; justify-content:space-between; padding:2px 4px 10px; }
+  #title { color:#fff; font-weight:800; font-size:clamp(17px,4.6vw,22px); text-shadow:0 2px 3px rgba(0,0,0,.35); }
+  #level { color:#f5b93d; font-weight:800; font-size:clamp(15px,4.2vw,19px); text-shadow:0 2px 3px rgba(0,0,0,.35); }
+  #restart { border:none; cursor:pointer; width:clamp(34px,8.5vw,42px); height:clamp(34px,8.5vw,42px); border-radius:50%;
+    background:rgba(255,255,255,.16); color:#fff; font-size:clamp(17px,4.5vw,22px); font-weight:800; line-height:1;
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.18), 0 2px 5px rgba(0,0,0,.28); }
+  #restart:active { transform:scale(.92); }
+
+  /* 场地 */
+  #field { position:relative; width:100%; aspect-ratio:0.92; background:#141d44; border-radius:12px;
+    box-shadow:0 5px 16px rgba(0,0,0,.4), inset 0 0 0 3px #0f1738; }
+  .tile { position:absolute; display:flex; align-items:center; justify-content:center; cursor:pointer;
+    background:linear-gradient(180deg,#fdfdff,#dfe4f5); border-radius:14%;
+    box-shadow:0 3px 6px rgba(0,0,0,.4), inset 0 -3px 0 rgba(80,90,140,.25);
+    transition:left .28s cubic-bezier(.4,.1,.3,1), top .28s cubic-bezier(.4,.1,.3,1), width .28s, height .28s, filter .15s; }
+  .tile.blocked { filter:brightness(.45); cursor:default; }
+  .tile.inbar { box-shadow:0 2px 4px rgba(0,0,0,.35); }
+  .tile.popout { animation:popout .3s ease forwards; }
+  @keyframes popout { 40%{transform:scale(1.25); filter:brightness(1.8);} 100%{transform:scale(.1); opacity:0; filter:brightness(2);} }
+  .tile.shake { animation:tshake .3s ease; }
+  @keyframes tshake { 25%{transform:translateX(-4px);} 50%{transform:translateX(4px);} 75%{transform:translateX(-2px);} }
+
+  /* 收纳栏 */
+  #barwrap { margin-top:14px; background:#141d44; border-radius:12px; padding:7px;
+    box-shadow:0 5px 16px rgba(0,0,0,.4), inset 0 0 0 3px #0f1738; }
+  #bar { display:flex; gap:4px; justify-content:center; position:relative; }
+  .slot { flex:1; aspect-ratio:1; background:#1d2a5e; border-radius:8px; box-shadow:inset 0 2px 5px rgba(0,0,0,.4); }
+  #barwrap.warn { animation:barWarn .7s ease-in-out infinite alternate; }
+  @keyframes barWarn { from{box-shadow:0 5px 16px rgba(0,0,0,.4), inset 0 0 0 3px #0f1738;} to{box-shadow:0 0 20px rgba(230,70,55,.7), inset 0 0 0 3px #b03a30;} }
+
+  /* 弹窗 */
+  #over { position:absolute; inset:-6px; z-index:60; display:none; align-items:center; justify-content:center; border-radius:12px; background:rgba(10,14,32,.85); backdrop-filter:blur(3px); }
+  #over.show { display:flex; animation:fadeIn .3s ease; }
+  @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
+  #overCard { text-align:center; color:#fff; padding:26px 30px; animation:cardIn .38s cubic-bezier(.34,1.4,.64,1); }
+  @keyframes cardIn { from{transform:scale(.72); opacity:0;} to{transform:scale(1); opacity:1;} }
+  #overCard .big { font-size:clamp(52px,15vw,74px); }
+  #overCard h2 { font-size:clamp(22px,6.4vw,30px); margin:8px 0 6px; text-shadow:0 3px 0 rgba(0,0,0,.35); }
+  #overCard .sub { color:#9fb0e8; font-size:clamp(13px,3.8vw,16px); margin-bottom:22px; }
+  #nextBtn { border:none; cursor:pointer; font-size:clamp(16px,4.6vw,20px); font-weight:800; color:#fff; padding:13px 42px; border-radius:14px;
+    background:linear-gradient(180deg,#ffb340,#ff8c1a); box-shadow:0 5px 0 #c96a08, 0 8px 14px rgba(0,0,0,.35); }
+  #nextBtn:active { transform:translateY(3px); box-shadow:0 2px 0 #c96a08; }
+
+  #toast { position:fixed; left:50%; bottom:12%; transform:translateX(-50%) translateY(16px);
+    background:rgba(20,26,58,.92); color:#fff; font-weight:700; font-size:clamp(13px,3.8vw,16px);
+    padding:10px 26px; border-radius:22px; opacity:0; pointer-events:none; z-index:100; transition:all .25s ease; }
+  #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+  #rotate { display:none; position:fixed; inset:0; z-index:99; background:#4a5aa8; color:#fff;
+    font-size:clamp(16px,3vh,22px); font-weight:800; text-align:center;
+    align-items:center; justify-content:center; flex-direction:column; gap:14px; }
+  #rotate .ph { font-size:44px; }
+  @media (orientation:landscape) and (max-height:520px) { #rotate { display:flex; } }
+</style>
+</head>
+<body>
+<div id="game">
+  <div id="topbar">
+    <div id="title">🧺 Triple Match</div>
+    <div id="level">Level 1</div>
+    <button id="restart" title="Exit">✕</button>
+  </div>
+  <div id="field"></div>
+  <div id="barwrap"><div id="bar">
+    <div class="slot"></div><div class="slot"></div><div class="slot"></div><div class="slot"></div>
+    <div class="slot"></div><div class="slot"></div><div class="slot"></div>
+  </div></div>
+  <div id="over"><div id="overCard">
+    <div class="big" id="overIcon">🎉</div>
+    <h2 id="overTitle">Level 1 complete!</h2>
+    <div class="sub" id="overSub"></div>
+    <button id="nextBtn">Next Level</button>
+  </div></div>
+</div>
+<div id="toast"></div>
+<div id="rotate"><div class="ph">📱</div><div>Rotate to portrait</div></div>
+
+<script>
+/* ================= App桥 / 存储 / Toast(同底座) ================= */
+const bridge={
+  fullScreen(on){ try{ if(window.android&&window.android.setFullScreen) window.android.setFullScreen(!!on); }catch(e){} },
+  exit(){ bridge.fullScreen(false);
+    try{ if(window.android&&window.android.exitGame){ window.android.exitGame(); return; } }catch(e){}
+    showToast('Exit'); }
+};
+bridge.fullScreen(true);
+const store={
+  get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+};
+let toastTimer=null;
+function showToast(txt){
+  const t=document.getElementById('toast');
+  t.textContent=txt; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),1400);
+}
+if(location.search.includes('reset')){
+  try{ localStorage.removeItem('tm_level'); }catch(e){}
+  history.replaceState(null,'',location.pathname);
+}
+
+/* ================= 音效 ================= */
+let AC=null, MASTER=null;
+function tone(f,dur,opt={}){ try{
+  const {type='sine',vol=0.22,at=0.008,slide=null,delay=0}=opt;
+  AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+  if(!MASTER){ const c=AC.createDynamicsCompressor(); c.threshold.value=-18; c.ratio.value=6; c.connect(AC.destination);
+    MASTER=AC.createGain(); MASTER.gain.value=1.7; MASTER.connect(c); }
+  if(AC.state==='suspended') AC.resume();
+  const t0=AC.currentTime+delay;
+  const o=AC.createOscillator(), g=AC.createGain();
+  o.type=type; o.frequency.setValueAtTime(f,t0);
+  if(slide) o.frequency.exponentialRampToValueAtTime(slide,t0+dur);
+  g.gain.setValueAtTime(0,t0); g.gain.linearRampToValueAtTime(vol,t0+at);
+  g.gain.exponentialRampToValueAtTime(0.001,t0+dur);
+  o.connect(g); g.connect(MASTER); o.start(t0); o.stop(t0+dur+0.03);
+}catch(e){} }
+const SC=[523.25,659.25,783.99,1046.5,1318.5];
+const sndPick=()=>tone(440,0.08,{type:'triangle',vol:0.35,slide:700});
+const sndMatch=()=>{ [0,2,4].forEach((s,i)=>tone(SC[s],0.2,{type:'triangle',vol:0.38,delay:i*0.06})); };
+const sndErr=()=>{ tone(170,0.1,{type:'triangle',vol:0.25}); };
+const sndWin=()=>{ [0,1,2,3,4].forEach(i=>{ tone(SC[i],0.26,{type:'triangle',vol:0.35,delay:i*0.1}); tone(SC[i]*2,0.16,{vol:0.1,delay:i*0.1}); }); tone(2093,0.5,{vol:0.13,delay:0.55}); };
+const sndLose=()=>{ tone(330,0.35,{type:'triangle',vol:0.28}); tone(247,0.5,{type:'triangle',vol:0.24,delay:0.22}); };
+const vib=p=>{ try{ navigator.vibrate&&navigator.vibrate(p); }catch(e){} };
+
+/* ================= 关卡生成 =================
+   半步网格: x∈0..GX, y∈0..GY(步长=tile/2), z层0..3
+   同层不重叠(半步距离≥2); 跨层矩形相交即遮挡  */
+const EMO=['🧶','🧸','🎀','🍎','🥕','⚽','🎲','🚗','🦴','🌸','🐟','🧀','⭐','🍩'];
+const GX=8, GY=9;                       // 半步网格范围
+let level=1, tiles=[], bar=[], playing=true;
+const BAR_CAP=7;
+const fieldEl=document.getElementById('field');
+
+function levelCfg(L){
+  const kinds=Math.min(4+~~((L-1)/2), 12);      // 种类: 4起步, 每2关+1, 封顶12
+  const sets =1+(L>3?1:0)+(L>8?1:0);            // 每种几组三连: 1→2→3
+  const layers=Math.min(2+~~((L-1)/3), 4);      // 堆叠层数: 2→4
+  return {kinds, sets, layers};
+}
+function genLevel(L){
+  const {kinds,sets,layers}=levelCfg(L);
+  const pool=[];
+  for(let k=0;k<kinds;k++) for(let s=0;s<sets*3;s++) pool.push(k);
+  pool.sort(()=>Math.random()-.5);
+  // 逐层放置: 每层一套占用表, 同层半步距离≥2
+  const placed=[];
+  let li=0;
+  for(const kind of pool){
+    let done=false;
+    for(let attempt=0;attempt<60 && !done;attempt++){
+      const z=~~(Math.random()*layers);
+      const x=~~(Math.random()*(GX+1)), y=~~(Math.random()*(GY+1));
+      if(placed.some(p=>p.z===z && Math.abs(p.x-x)<2 && Math.abs(p.y-y)<2)) continue;
+      placed.push({kind,x,y,z}); done=true;
+    }
+    if(!done){ // 兜底: 找第一个可用位
+      outer: for(let z=0;z<layers;z++) for(let x=0;x<=GX;x++) for(let y=0;y<=GY;y++){
+        if(!placed.some(p=>p.z===z && Math.abs(p.x-x)<2 && Math.abs(p.y-y)<2)){ placed.push({kind,x,y,z}); break outer; }
+      }
+    }
+  }
+  return placed;
+}
+function tileSizePx(){ return fieldEl.clientWidth/( (GX+2)/2 ); }   // 场宽 = (GX+2)个半步
+function tilePos(t){
+  const s=tileSizePx();
+  return { x: t.x*s/2 + s*0.06 + t.z*2, y: t.y*s/2 + s*0.06 - t.z*3, s: s*0.88 };
+}
+function isBlocked(t){
+  return tiles.some(o=>!o.dead && !o.inbar && o.z>t.z &&
+    Math.abs(o.x-t.x)<2 && Math.abs(o.y-t.y)<2);
+}
+
+/* ================= 渲染与交互 ================= */
+function newLevel(){
+  tiles.forEach(t=>t.el&&t.el.remove()); bar=[]; playing=true;
+  document.getElementById('level').textContent='Level '+level;
+  document.getElementById('over').classList.remove('show');
+  document.getElementById('barwrap').classList.remove('warn');
+  const placed=genLevel(level);
+  tiles=placed.map(p=>({...p, dead:false, inbar:false, el:null}));
+  const s=tileSizePx();
+  for(const t of tiles){
+    const el=document.createElement('div'); el.className='tile';
+    const pos=tilePos(t);
+    el.style.cssText=`left:${pos.x}px;top:${pos.y}px;width:${pos.s}px;height:${pos.s}px;font-size:${pos.s*0.62}px;z-index:${t.z+1}`;
+    el.textContent=EMO[t.kind];
+    el.addEventListener('click',()=>pickTile(t));
+    fieldEl.appendChild(el); t.el=el;
+  }
+  refreshBlocked();
+}
+function refreshBlocked(){
+  for(const t of tiles){
+    if(t.dead||t.inbar) continue;
+    t.el.classList.toggle('blocked', isBlocked(t));
+  }
+}
+function barSlotRect(i){
+  const slots=document.querySelectorAll('.slot');
+  const r=slots[i].getBoundingClientRect(), g=document.getElementById('game').getBoundingClientRect();
+  const f=fieldEl.getBoundingClientRect();
+  return { x:r.left-f.left+2, y:r.top-f.top+2, s:r.width-4 };
+}
+function layoutBar(){
+  bar.forEach((t,i)=>{
+    const p=barSlotRect(i);
+    t.el.style.left=p.x+'px'; t.el.style.top=p.y+'px';
+    t.el.style.width=p.s+'px'; t.el.style.height=p.s+'px';
+    t.el.style.fontSize=(p.s*0.62)+'px';
+    t.el.style.zIndex=40;
+  });
+  document.getElementById('barwrap').classList.toggle('warn', bar.length>=BAR_CAP-1);
+}
+function pickTile(t){
+  if(!playing || t.dead || t.inbar || isBlocked(t)){
+    if(playing && !t.dead && !t.inbar){ t.el.classList.add('shake'); sndErr(); setTimeout(()=>t.el.classList.remove('shake'),320); }
+    return;
+  }
+  if(bar.length>=BAR_CAP) return;
+  t.inbar=true; sndPick(); vib(8);
+  // 插到同款相邻位置
+  let insertAt=bar.length;
+  for(let i=bar.length-1;i>=0;i--) if(bar[i].kind===t.kind){ insertAt=i+1; break; }
+  bar.splice(insertAt,0,t);
+  t.el.classList.add('inbar');
+  layoutBar(); refreshBlocked();
+  // 三连检测(动画后消除)
+  const same=bar.filter(x=>x.kind===t.kind);
+  if(same.length>=3){
+    playing='anim';
+    setTimeout(()=>{
+      same.slice(0,3).forEach(x=>{ x.el.classList.add('popout'); });
+      sndMatch(); vib([25,35,25]);
+      setTimeout(()=>{
+        same.slice(0,3).forEach(x=>{ x.dead=true; x.el.remove(); bar.splice(bar.indexOf(x),1); });
+        layoutBar(); playing=true;
+        checkEnd();
+      },320);
+    },300);
+  } else {
+    checkEnd();
+  }
+}
+function checkEnd(){
+  if(playing!==true) return;
+  const left=tiles.filter(t=>!t.dead);
+  if(left.length===0){ win(); return; }
+  if(bar.length>=BAR_CAP){ lose(); return; }
+}
+function win(){
+  playing=false; sndWin(); vib([50,60,50,60,80]);
+  document.getElementById('overIcon').textContent='🎉';
+  document.getElementById('overTitle').textContent=`Level ${level} complete!`;
+  document.getElementById('overSub').textContent='Perfect!';
+  document.getElementById('nextBtn').textContent='Next Level';
+  level++; store.set('tm_level',level);
+  setTimeout(()=>document.getElementById('over').classList.add('show'),600);
+}
+function lose(){
+  playing=false; sndLose(); vib(90);
+  document.getElementById('overIcon').textContent='😵';
+  document.getElementById('overTitle').textContent='Rack is full!';
+  document.getElementById('overSub').textContent='Try again, you got this!';
+  document.getElementById('nextBtn').textContent='Try Again';
+  setTimeout(()=>document.getElementById('over').classList.add('show'),700);
+}
+document.getElementById('nextBtn').addEventListener('click',()=>newLevel());
+document.getElementById('restart').addEventListener('click',e=>{ e.stopPropagation(); bridge.exit(); });
+window.addEventListener('resize',()=>{ // 重排场上与栏内位置
+  for(const t of tiles){ if(t.dead||t.inbar) continue;
+    const pos=tilePos(t);
+    t.el.style.left=pos.x+'px'; t.el.style.top=pos.y+'px';
+    t.el.style.width=pos.s+'px'; t.el.style.height=pos.s+'px'; t.el.style.fontSize=(pos.s*0.62)+'px';
+  }
+  layoutBar();
+});
+
+level=(+store.get('tm_level'))||1;
+newLevel();
+</script>
+</body>
+</html>
