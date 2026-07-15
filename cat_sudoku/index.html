@@ -122,9 +122,13 @@
   @keyframes catBounce { from{transform:translateY(0);} to{transform:translateY(-10px);} }
   #overCard h2 { font-size:clamp(22px,6.4vw,30px); margin:8px 0 6px; }
   #overCard .sub { color:#a58bc8; font-size:clamp(13px,3.8vw,16px); margin-bottom:22px; }
-  #nextBtn { border:none; cursor:pointer; font-size:clamp(16px,4.6vw,20px); font-weight:800; color:#fff; padding:13px 42px; border-radius:14px;
+  #overBtns { display:flex; gap:10px; justify-content:center; align-items:stretch; }
+  #nextBtn { border:none; cursor:pointer; font-size:clamp(16px,4.6vw,20px); font-weight:800; color:#fff; padding:13px 34px; border-radius:14px;
     background:linear-gradient(180deg,#ffb340,#ff8c1a); box-shadow:0 5px 0 #c96a08, 0 8px 14px rgba(200,120,20,.35); }
   #nextBtn:active { transform:translateY(3px); box-shadow:0 2px 0 #c96a08; }
+  #exitBtn { border:none; cursor:pointer; font-size:clamp(14px,4vw,17px); font-weight:800; color:#a483cc; padding:13px 22px; border-radius:14px;
+    background:#f3ecfb; box-shadow:0 5px 0 #dcc8f2; }
+  #exitBtn:active { transform:translateY(3px); box-shadow:0 2px 0 #dcc8f2; }
 
   .catRain { position:absolute; z-index:55; font-size:30px; pointer-events:none; animation:catFall 2.2s linear forwards; }
   @keyframes catFall { from{transform:translateY(-50px) rotate(-15deg); opacity:1;} to{transform:translateY(110vh) rotate(20deg); opacity:.8;} }
@@ -172,7 +176,10 @@
     <div class="bigcat">😻</div>
     <h2 id="overTitle">Level 1 complete!</h2>
     <div class="sub" id="overSub">All cats found! 🐾</div>
-    <button id="nextBtn">Next Level</button>
+    <div id="overBtns">
+      <button id="nextBtn">Next Level</button>
+      <button id="exitBtn">Exit</button>
+    </div>
   </div></div>
 </div>
 <div id="toast"></div>
@@ -184,9 +191,11 @@ const bridge={
   fullScreen(on){ try{ if(window.android&&window.android.setFullScreen) window.android.setFullScreen(!!on); }catch(e){} },
   exit(){ bridge.fullScreen(false);
     try{ if(window.android&&window.android.exitGame){ window.android.exitGame(); return; } }catch(e){}
-    showToast('Exit'); }
+    showToast('Exit'); },
+  stat(event,params){ try{ if(window.android&&window.android.statistics) window.android.statistics(JSON.stringify({event,params:params||{}})); }catch(e){} }
 };
 bridge.fullScreen(true);
+bridge.stat('pv_h5',{page_name:'findcat'});   // 页面PV
 const store={
   get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
   set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
@@ -427,6 +436,7 @@ function lose(){
   document.querySelector('#overCard .bigcat').textContent='🙀';
   setTimeout(()=>document.getElementById('over').classList.add('show'),600);
 }
+document.getElementById('exitBtn').addEventListener('click',()=>{ bridge.exit(); });
 document.getElementById('nextBtn').addEventListener('click',()=>{
   document.querySelector('#overCard .bigcat').textContent='😻';
   newLevel();
