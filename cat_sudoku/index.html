@@ -47,7 +47,7 @@
     transition:filter .12s; }
   .sq:active { filter:brightness(1.08); }
   .sq .mark { color:rgba(255,255,255,.95); font-weight:900; text-shadow:0 1px 2px rgba(0,0,0,.15); }
-  .sq.cat { box-shadow:inset 0 -3px 0 rgba(0,0,0,.08), inset 0 2px 0 rgba(255,255,255,.5), 0 0 0 3px #ffd54d, 0 0 14px rgba(255,200,60,.75); z-index:2; }
+  .sq.cat { box-shadow:inset 0 0 0 3px #ffd54d, inset 0 0 12px rgba(255,200,60,.7), inset 0 -3px 0 rgba(0,0,0,.08); z-index:2; }   /* 内边框+内发光, 不撑大UI */
   .sq.err { animation:errFlash .4s ease; }
   @keyframes errFlash { 0%,100%{filter:none;} 30%{filter:brightness(.75) saturate(2) hue-rotate(-30deg); transform:translateX(-3px);} 60%{transform:translateX(3px);} }
 
