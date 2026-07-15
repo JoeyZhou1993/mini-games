@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta name="description" content="Find the Cats — cozy logic puzzle. One cat per row, column and color!">
+<meta name="description" content="Kedileri Bul — her satır, sütun ve renkte 1 kedi!">
 <meta name="theme-color" content="#c9a6f0">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>Find the Cats</title>
+<title>Kedileri Bul</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
   html,body { height:100%; overflow:hidden; }
@@ -148,8 +148,8 @@
 <body>
 <div id="game">
   <div id="topbar">
-    <div id="title"><span class="cat">😺</span>Find the Cats</div>
-    <div id="level">LEVEL 1</div>
+    <div id="title"><span class="cat">😺</span>Kedileri Bul</div>
+    <div id="level">SEVİYE 1</div>
     <button id="restart" title="Exit">✕</button>
   </div>
   <div id="status">
@@ -158,8 +158,8 @@
   </div>
   <div id="boardwrap"><div id="board"></div></div>
   <div id="tools">
-    <button class="tool" id="resetBtn">↺ Restart</button>
-    <button class="tool" id="hintBtn">💡 Hint<span id="hintCnt" class="badge">5</span></button>
+    <button class="tool" id="resetBtn">↺ Yeniden</button>
+    <button class="tool" id="hintBtn">💡 İpucu<span id="hintCnt" class="badge">5</span></button>
   </div>
   <div id="tut"><div id="tutFinger">👆</div></div>
   <div id="coach">
@@ -169,21 +169,21 @@
       <div id="coachIcon">😺</div>
       <div id="coachTip"></div>
       <div id="coachSub"></div>
-      <button id="coachNext">Next →</button>
+      <button id="coachNext">İleri →</button>
     </div>
   </div>
   <div id="over"><div id="overCard">
     <div class="bigcat">😻</div>
-    <h2 id="overTitle">Level 1 complete!</h2>
-    <div class="sub" id="overSub">All cats found! 🐾</div>
+    <h2 id="overTitle">Seviye 1 tamamlandı!</h2>
+    <div class="sub" id="overSub">Tüm kediler bulundu! 🐾</div>
     <div id="overBtns">
-      <button id="nextBtn">Next Level</button>
-      <button id="exitBtn">Exit</button>
+      <button id="nextBtn">Sonraki Seviye</button>
+      <button id="exitBtn">Çıkış</button>
     </div>
   </div></div>
 </div>
 <div id="toast"></div>
-<div id="rotate"><div class="ph">📱</div><div>Rotate to portrait</div></div>
+<div id="rotate"><div class="ph">📱</div><div>Dikey moda çevirin</div></div>
 
 <script>
 /* ================= App桥 / 存储 / Toast(底座) ================= */
@@ -191,7 +191,7 @@ const bridge={
   fullScreen(on){ try{ if(window.android&&window.android.setFullScreen) window.android.setFullScreen(!!on); }catch(e){} },
   exit(){ bridge.fullScreen(false);
     try{ if(window.android&&window.android.exitGame){ window.android.exitGame(); return; } }catch(e){}
-    showToast('Exit'); },
+    showToast('Çıkış'); },
   stat(event,params){ try{ if(window.android&&window.android.statistics) window.android.statistics(JSON.stringify({event,params:params||{}})); }catch(e){} }
 };
 bridge.fullScreen(true);
@@ -256,8 +256,14 @@ function genCats(N){
 function genRegions(N,cats){
   const region=Array(N*N).fill(-1), frontier=[];
   cats.forEach((c,r)=>{ region[r*N+c]=r; frontier.push([r,c,r]); });
+  /* 降难度: 1-2个"贪婪区"优先扩张 → 大色块+若干小色块, 小块是天然推理锚点 */
+  const greedy=new Set([~~(Math.random()*N)]);
+  if(N>=7){ let g2=~~(Math.random()*N); while(greedy.has(g2)) g2=~~(Math.random()*N); greedy.add(g2); }
   while(frontier.length){
-    const i=~~(Math.random()*frontier.length);
+    let i;
+    const gIdx=frontier.map((f,k)=>greedy.has(f[2])?k:-1).filter(k=>k>=0);
+    if(gIdx.length && Math.random()<0.8) i=gIdx[~~(Math.random()*gIdx.length)];
+    else i=~~(Math.random()*frontier.length);
     const [r,c,id]=frontier[i];
     const dirs=[[1,0],[-1,0],[0,1],[0,-1]].sort(()=>Math.random()-.5);
     let grew=false;
@@ -336,7 +342,7 @@ function newLevel(){
   regionColor=assignColors(N,region);
   state=Array(N*N).fill(0);
   fish=3; playing=true;
-  document.getElementById('level').textContent='LEVEL '+level;
+  document.getElementById('level').textContent='SEVİYE '+level;
   document.getElementById('over').classList.remove('show');
   boardEl.style.gridTemplateColumns=`repeat(${N},1fr)`;
   boardEl.style.gridTemplateRows=`repeat(${N},1fr)`;
@@ -367,10 +373,10 @@ function violation(i){
   for(let k=0;k<N*N;k++){
     if(state[k]!==2||k===i) continue;
     const kr=~~(k/N), kc=k%N;
-    if(kr===r) return 'row';
-    if(kc===c) return 'column';
-    if(region[k]===region[i]) return 'color area';
-    if(Math.abs(kr-r)<=1&&Math.abs(kc-c)<=1) return 'touch zone';
+    if(kr===r) return 'Aynı satırda iki kedi olamaz';
+    if(kc===c) return 'Aynı sütunda iki kedi olamaz';
+    if(region[k]===region[i]) return 'Aynı renkte iki kedi olamaz';
+    if(Math.abs(kr-r)<=1&&Math.abs(kc-c)<=1) return 'Kediler temas edemez';
   }
   return null;
 }
@@ -378,7 +384,7 @@ function tapCell(i){
   if(!playing) return;
   /* 引导实操步: 只允许点发光的解位格, 保证跟着做必成功 */
   if(tutorialActive){
-    if(tutStep!==TUT_TOTAL-1 || i!==GATE()){ showToast('👆 Tap the glowing cell'); return; }
+    if(tutStep!==TUT_TOTAL-1 || i!==GATE()){ showToast('👆 Parlayan kareye dokun'); return; }
   }
   const st=state[i];
   if(st===0){ state[i]=1; sndTap(); render(); }
@@ -389,7 +395,7 @@ function tapCell(i){
       cells[i].classList.add('err'); setTimeout(()=>cells[i].classList.remove('err'),450);
       render();
       if(fish<=0){ lose(); return; }
-      showToast(`Cats conflict: same ${why}! 🙀`);
+      showToast(why+'! 🙀');
     } else {
       state[i]=2; sndCat(); vib(12);
       autoMark(i);
@@ -421,9 +427,9 @@ function checkWin(){
     document.getElementById('game').appendChild(el);
     setTimeout(()=>el.remove(),3400);
   }
-  document.getElementById('overTitle').textContent=`Level ${level} complete!`;
-  document.getElementById('overSub').textContent='All cats found! 🐾';
-  document.getElementById('nextBtn').textContent='Next Level';
+  document.getElementById('overTitle').textContent=`Seviye ${level} tamamlandı!`;
+  document.getElementById('overSub').textContent='Tüm kediler bulundu! 🐾';
+  document.getElementById('nextBtn').textContent='Sonraki Seviye';
   document.getElementById('exitBtn').style.display='none';    /* 胜利弹窗不给退出 */
   level++; store.set('cs_level',level);
   if(hints<HINT_MAX){ hints++; store.set('cs_hints',hints); renderHints(); }   /* 过关回补1次 */
@@ -431,9 +437,9 @@ function checkWin(){
 }
 function lose(){
   playing=false; sndLose(); vib(90);
-  document.getElementById('overTitle').textContent='Out of fish! 🐟';
-  document.getElementById('overSub').textContent="Don't worry — try again!";
-  document.getElementById('nextBtn').textContent='Try Again';
+  document.getElementById('overTitle').textContent='Balıklar bitti! 🐟';
+  document.getElementById('overSub').textContent='Üzülme — tekrar dene!';
+  document.getElementById('nextBtn').textContent='Tekrar Dene';
   document.getElementById('exitBtn').style.display='';        /* 失败弹窗才有退出 */
   document.querySelector('#overCard .bigcat').textContent='🙀';
   setTimeout(()=>document.getElementById('over').classList.add('show'),600);
@@ -454,11 +460,11 @@ function renderHints(){
 }
 document.getElementById('hintBtn').addEventListener('click',()=>{
   if(!playing||tutorialActive) return;
-  if(hints<=0){ showToast('No hints left — beat a level to earn one! 💡'); return; }
+  if(hints<=0){ showToast('İpucu kalmadı — seviye kazan, ipucu kap! 💡'); return; }
   const fixed={};
   for(let i=0;i<N*N;i++) if(state[i]===2) fixed[~~(i/N)]=i%N;
   const sol=solveCompat(N,region,fixed);
-  if(!sol){ showToast('No solution from here — restart! 🙀'); return; }
+  if(!sol){ showToast('Buradan çözüm yok — yeniden başla! 🙀'); return; }
   const r=sol.findIndex((c,rr)=>state[rr*N+c]!==2);
   if(r<0) return;
   const i=r*N+sol[r];
@@ -485,19 +491,19 @@ function paintCell(idx,cls,emoji){
 }
 /* 每步定义: icon/tip/sub/是否实操步op/高亮画法 */
 const TUT=[
-  { icon:'😺', tip:"Let's learn how to find the hidden cats!", sub:'Just 3 simple rules 🐾',
+  { icon:'😺', tip:'Gizli kedileri bulmayı öğrenelim!', sub:'Sadece 3 basit kural 🐾',
     draw(){} },
-  { icon:'🎨', tip:'Rule 1 — Each COLOR block holds exactly 1 cat.', sub:'This whole color = one cat only',
+  { icon:'🎨', tip:'Kural 1 — Her RENK bölgesinde tam 1 kedi.', sub:'Bu renkte sadece 1 kedi olabilir',
     draw(){ const cid=region[GATE()];
       for(let i=0;i<N*N;i++) if(region[i]===cid) paintCell(i,'spot-c', i===GATE()?'😺':''); } },
-  { icon:'↔️', tip:'Rule 2 — Only 1 cat per row AND per column.', sub:'Never two cats in the same line',
+  { icon:'↔️', tip:'Kural 2 — Her satır ve sütunda sadece 1 kedi.', sub:'Aynı çizgide iki kedi olmaz',
     draw(){ for(let c=0;c<N;c++) paintCell(demoR*N+c,'spot-line', c===demoC0?'😺':'');
       for(let r=0;r<N;r++) if(r!==demoR) paintCell(r*N+demoC0,'spot-line',''); } },
-  { icon:'🚫', tip:"Rule 3 — Cats can't touch. Not even corners!", sub:'No cat allowed in any red cell',
+  { icon:'🚫', tip:'Kural 3 — Kediler temas edemez. Köşeler bile!', sub:'Kırmızı karelere kedi konulamaz',
     draw(){ paintCell(GATE(),'spot','😺');
       for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){ if(!dr&&!dc) continue;
         const r=demoR+dr,c=demoC0+dc; if(r<0||c<0||r>=N||c>=N) continue; paintCell(r*N+c,'spot-bad','✕'); } } },
-  { icon:'👆', tip:'Tap once = ✕ mark. Tap the SAME cell twice = 😺 cat.', sub:'Try it — place your first cat!', op:true,
+  { icon:'👆', tip:'1 dokunuş = ✕ işaret. AYNI kareye 2 dokunuş = 😺 kedi.', sub:'Dene — ilk kedini yerleştir!', op:true,
     draw(){ paintCell(GATE(),'spot',''); } },
 ];
 
@@ -529,7 +535,7 @@ function gotoStep(n){
     positionFinger(); tutLoop();
   } else {
     coach.classList.remove('pass'); next.classList.remove('wait');
-    next.textContent = (n===TUT_TOTAL-2)? 'Got it! →' : 'Next →';
+    next.textContent = (n===TUT_TOTAL-2)? 'Anladım! →' : 'İleri →';
     document.getElementById('tut').classList.remove('show');
   }
   sndTap();
@@ -548,7 +554,7 @@ function endTutorial(grad){
   document.getElementById('tut').classList.remove('show');
   document.getElementById('coach').classList.remove('show','pass');
   clearInterval(tutTimer); clearPaint(); render();
-  if(grad){ tutorialActive=false; store.set('cs_tut','1'); showToast('Purrfect! You got it 😸'); }
+  if(grad){ tutorialActive=false; store.set('cs_tut','1'); showToast('Harika! Öğrendin 😸'); }
 }
 window.addEventListener('resize',()=>{ if(tutorialActive) setTimeout(positionFinger,80); });
 
