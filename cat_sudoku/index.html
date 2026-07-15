@@ -71,15 +71,40 @@
     background:linear-gradient(180deg,#b98af0,#9257d8); box-shadow:0 5px 0 #7440b0, 0 8px 14px rgba(140,90,200,.35); }
   #startBtn:active { transform:translateY(3px); box-shadow:0 2px 0 #7440b0; }
 
-  /* 新手引导 */
-  #tut { position:absolute; inset:0; z-index:45; pointer-events:none; display:none; }
+  /* ===== 分步新手引导 coach ===== */
+  #tut { position:absolute; inset:0; z-index:52; pointer-events:none; display:none; }
   #tut.show { display:block; }
-  #tutFinger { position:absolute; font-size:clamp(34px,9vw,46px); filter:drop-shadow(0 3px 4px rgba(0,0,0,.3));
+  #tutFinger { position:absolute; font-size:clamp(34px,9vw,46px); filter:drop-shadow(0 3px 4px rgba(0,0,0,.4));
     animation:tutTap 1.1s ease-in-out infinite; transition:left .35s, top .35s; will-change:left,top; }
   @keyframes tutTap { 0%,100%{transform:translateY(0) scale(1);} 45%{transform:translateY(6px) scale(.86);} 60%{transform:translateY(0) scale(1);} }
-  #tutTip { position:absolute; left:50%; transform:translateX(-50%); top:var(--tipy,-8px);
-    background:#fff; color:#6b4a96; font-weight:800; font-size:clamp(14px,4vw,18px);
-    padding:9px 20px; border-radius:20px; box-shadow:0 4px 12px rgba(150,110,200,.3); white-space:nowrap; z-index:46; }
+
+  #coach { position:absolute; inset:-6px; display:none; }
+  #coach.show { display:block; }
+  #coachDim { position:absolute; inset:0; z-index:40; background:rgba(58,40,86,.62); border-radius:14px; transition:background .3s; }
+  #coach.pass #coachDim { background:rgba(58,40,86,.12); }
+  #coach.pass { pointer-events:none; }
+  /* spotlight: 高亮格浮到遮罩之上 */
+  .sq.spot   { z-index:50 !important; box-shadow:0 0 0 3px #fff,     0 0 18px 5px rgba(255,255,255,.8); }
+  .sq.spot-c { z-index:50 !important; box-shadow:0 0 0 3px #ffd54d,  0 0 18px 5px rgba(255,210,70,.85); }
+  .sq.spot-line { z-index:50 !important; box-shadow:0 0 0 3px #74c0ff, 0 0 16px 4px rgba(110,190,255,.8); }
+  .sq.spot-bad  { z-index:50 !important; box-shadow:0 0 0 3px #ff8080, 0 0 16px 4px rgba(255,110,110,.8); }
+  .sq .demo { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-weight:900; color:rgba(255,255,255,.95); text-shadow:0 1px 2px rgba(0,0,0,.2); }
+  /* 底部教学条 */
+  #coachBar { position:absolute; left:0; right:0; bottom:-2px; z-index:46;
+    background:#fff; border-radius:22px; padding:15px 22px 18px; text-align:center;
+    box-shadow:0 -3px 24px rgba(90,60,140,.28); animation:barUp .35s cubic-bezier(.34,1.4,.64,1); }
+  #coachDots { display:flex; gap:6px; justify-content:center; margin-bottom:11px; }
+  #coachDots .dot { width:7px; height:7px; border-radius:50%; background:#e0d0f2; transition:all .25s; }
+  #coachDots .dot.on { background:#9257d8; width:20px; border-radius:4px; }
+  #coachIcon { font-size:clamp(30px,8vw,40px); line-height:1; margin-bottom:5px; }
+  #coachTip { color:#5b4632; font-weight:800; font-size:clamp(15px,4.2vw,19px); line-height:1.4; }
+  #coachSub { color:#a58bc8; font-weight:700; font-size:clamp(12px,3.4vw,14px); min-height:1.1em; margin-top:3px; }
+  #coachNext { margin-top:13px; border:none; cursor:pointer; font-size:clamp(15px,4.4vw,19px); font-weight:800; color:#fff;
+    padding:11px 42px; border-radius:14px; background:linear-gradient(180deg,#b98af0,#9257d8);
+    box-shadow:0 5px 0 #7440b0, 0 7px 12px rgba(140,90,200,.35); }
+  #coachNext:active { transform:translateY(3px); box-shadow:0 2px 0 #7440b0; }
+  #coachNext.wait { display:none; }
+  @keyframes barUp { from{transform:translateY(30px); opacity:0;} to{transform:translateY(0); opacity:1;} }
 
   /* 弹窗 */
   #over { position:absolute; inset:-6px; z-index:60; display:none; align-items:center; justify-content:center; border-radius:12px; background:rgba(238,221,251,.8); backdrop-filter:blur(4px); }
@@ -127,15 +152,17 @@
     <button class="tool" id="resetBtn">↺ Restart</button>
     <button class="tool" id="hintBtn">💡 Hint</button>
   </div>
-  <div id="tut"><div id="tutTip">Tap 2× to place a cat!</div><div id="tutFinger">👆</div></div>
-  <div id="rules"><div id="rulesCard">
-    <h2>😺 Find the Cats</h2>
-    <div class="rule"><span class="ic">↔️</span> 1 cat per row &amp; column</div>
-    <div class="rule"><span class="ic">🎨</span> 1 cat per color area</div>
-    <div class="rule"><span class="ic">🚫</span> Cats cannot touch each other</div>
-    <div class="hint">Tap once = ✕ mark · Tap twice = cat</div>
-    <button id="startBtn">Start</button>
-  </div></div>
+  <div id="tut"><div id="tutFinger">👆</div></div>
+  <div id="coach">
+    <div id="coachDim"></div>
+    <div id="coachBar">
+      <div id="coachDots"></div>
+      <div id="coachIcon">😺</div>
+      <div id="coachTip"></div>
+      <div id="coachSub"></div>
+      <button id="coachNext">Next →</button>
+    </div>
+  </div>
   <div id="over"><div id="overCard">
     <div class="bigcat">😻</div>
     <h2 id="overTitle">Level 1 complete!</h2>
@@ -255,16 +282,43 @@ function solveCompat(N,region,fixed){
 }
 
 /* ================= 游戏状态 ================= */
-const PALETTE=['#a9d7f5','#f7b7c8','#b4e6ac','#cdbcf5','#f9e08e','#f4a08e','#8fd8d2','#f5c9a0','#c3e08a'];
+/* 10 色, 按色相排序且刻意只保留 1 绿 1 青, 避免"满屏绿" */
+const PALETTE=['#f77e6e','#f7a84c','#efc93f','#84cc62','#45c6b6','#67b4f0','#8093ea','#b884e3','#e884ce','#f593ac'];
+/*              珊瑚红     橙        黄         绿(唯一)  青(唯一)  天蓝      蓝紫      紫        品红      粉      */
 const boardEl=document.getElementById('board');
-let level=1, N=5, region=[], cells=[], state=[], fish=3, playing=true;
+let level=1, N=5, region=[], regionColor=[], cells=[], state=[], fish=3, playing=true;
 /* state: 0=空 1=✕ 2=😺 */
+
+/* 相邻区域自动避让: 图着色, 让接壤区域色相尽量拉开 */
+function assignColors(N,region){
+  const R=N, P=PALETTE.length;
+  const adj=Array.from({length:R},()=>new Set());
+  for(let i=0;i<N*N;i++){
+    const r=~~(i/N), c=i%N;
+    if(c+1<N && region[i]!==region[i+1]){ adj[region[i]].add(region[i+1]); adj[region[i+1]].add(region[i]); }
+    if(r+1<N && region[i]!==region[i+N]){ adj[region[i]].add(region[i+N]); adj[region[i+N]].add(region[i]); }
+  }
+  const cidx=Array(R).fill(-1);
+  const circ=(a,b)=>{ const d=Math.abs(a-b); return Math.min(d,P-d); };   /* 色相环距离(色板已按色相排序) */
+  const order=[...Array(R).keys()].sort((x,y)=>adj[y].size-adj[x].size);  /* 邻居最多的先上色 */
+  for(const rg of order){
+    const used=[...adj[rg]].map(n=>cidx[n]).filter(v=>v>=0);
+    let best=0, bestScore=-1;
+    for(let p=0;p<P;p++){
+      const minD=used.length? Math.min(...used.map(u=>circ(p,u))) : P;  /* 与已上色邻居的最小色相距离 */
+      if(minD>bestScore){ bestScore=minD; best=p; }
+    }
+    cidx[rg]=best;
+  }
+  return cidx.map(p=>PALETTE[p]);
+}
 
 function levelN(L){ return Math.min(5+~~((L-1)/3), 9); }
 function newLevel(){
   N=levelN(level);
   const cats=genCats(N);
   region=genRegions(N,cats);
+  regionColor=assignColors(N,region);
   state=Array(N*N).fill(0);
   fish=3; playing=true;
   document.getElementById('level').textContent='LEVEL '+level;
@@ -274,7 +328,7 @@ function newLevel(){
   boardEl.innerHTML=''; cells=[];
   for(let i=0;i<N*N;i++){
     const d=document.createElement('div'); d.className='sq';
-    d.style.background=PALETTE[region[i]%PALETTE.length];
+    d.style.background=regionColor[region[i]];
     d.style.fontSize=`calc(var(--gw)/${N+3})`;
     const m=document.createElement('span'); m.className='mark'; d.appendChild(m);
     d.addEventListener('click',()=>tapCell(i));
@@ -307,6 +361,10 @@ function violation(i){
 }
 function tapCell(i){
   if(!playing) return;
+  /* 引导实操步: 只允许点发光的解位格, 保证跟着做必成功 */
+  if(tutorialActive){
+    if(tutStep!==TUT_TOTAL-1 || i!==GATE()){ showToast('👆 Tap the glowing cell'); return; }
+  }
   const st=state[i];
   if(st===0){ state[i]=1; sndTap(); render(); }
   else if(st===1){
@@ -366,9 +424,9 @@ document.getElementById('nextBtn').addEventListener('click',()=>{
   document.querySelector('#overCard .bigcat').textContent='😻';
   newLevel();
 });
-document.getElementById('resetBtn').addEventListener('click',()=>{ sndTap(); newLevel(); });
+document.getElementById('resetBtn').addEventListener('click',()=>{ if(tutorialActive) return; sndTap(); newLevel(); });
 document.getElementById('hintBtn').addEventListener('click',()=>{
-  if(!playing) return;
+  if(!playing||tutorialActive) return;
   const fixed={};
   for(let i=0;i<N*N;i++) if(state[i]===2) fixed[~~(i/N)]=i%N;
   const sol=solveCompat(N,region,fixed);
@@ -382,48 +440,88 @@ document.getElementById('hintBtn').addEventListener('click',()=>{
 });
 document.getElementById('restart').addEventListener('click',e=>{ e.stopPropagation(); bridge.exit(); });
 
-/* ================= 规则卡 + 新手引导 ================= */
-let tutorialActive=false;
-let tutTimer=null;
-function tutLoop(){
-  clearInterval(tutTimer);
-  tutTimer=setInterval(()=>{ if(tutorialActive) positionTutorial(); else clearInterval(tutTimer); },600);
+/* ================= 分步新手引导(状态机 + spotlight) ================= */
+let tutorialActive=false, tutStep=-1, demoC0=0;
+const TUT_TOTAL=5;          /* step 0..4 */
+const GATE=()=>0*N+demoC0;  /* 实操步唯一可点格=第一只猫解位 */
+
+function clearPaint(){
+  cells.forEach(el=>{ el.classList.remove('spot','spot-c','spot-line','spot-bad');
+    const d=el.querySelector('.demo'); if(d) d.remove(); });
 }
-function positionTutorial(){
-  if(!tutorialActive) return;
-  /* 指向"与当前局面兼容解"的下一个猫位 */
-  const fixed={};
-  for(let i=0;i<N*N;i++) if(state[i]===2) fixed[~~(i/N)]=i%N;
-  const sol=solveCompat(N,region,fixed);
-  if(!sol) return;
-  const r=sol.findIndex((c,rr)=>state[rr*N+c]!==2);
-  if(r<0) return;
-  const target=cells[r*N+sol[r]];
+function paintCell(idx,cls,emoji){
+  const el=cells[idx]; el.classList.add(cls);
+  if(emoji){ let d=el.querySelector('.demo'); if(!d){ d=document.createElement('span'); d.className='demo'; el.appendChild(d); }
+    d.textContent=emoji; d.style.fontSize=`calc(var(--gw)/${N+3})`; }
+}
+/* 每步定义: icon/tip/sub/是否实操步op/高亮画法 */
+const TUT=[
+  { icon:'😺', tip:"Let's learn how to find the hidden cats!", sub:'Just 3 simple rules 🐾',
+    draw(){} },
+  { icon:'🎨', tip:'Rule 1 — Each COLOR block holds exactly 1 cat.', sub:'This whole color = one cat only',
+    draw(){ const cid=region[GATE()];
+      for(let i=0;i<N*N;i++) if(region[i]===cid) paintCell(i,'spot-c', i===GATE()?'😺':''); } },
+  { icon:'↔️', tip:'Rule 2 — Only 1 cat per row AND per column.', sub:'Never two cats in the same line',
+    draw(){ for(let c=0;c<N;c++) paintCell(0*N+c,'spot-line', c===demoC0?'😺':'');
+      for(let r=1;r<N;r++) paintCell(r*N+demoC0,'spot-line',''); } },
+  { icon:'🚫', tip:"Rule 3 — Cats can't touch. Not even corners!", sub:'No cat allowed in any red cell',
+    draw(){ paintCell(GATE(),'spot','😺');
+      for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){ if(!dr&&!dc) continue;
+        const r=0+dr,c=demoC0+dc; if(r<0||c<0||r>=N||c>=N) continue; paintCell(r*N+c,'spot-bad','✕'); } } },
+  { icon:'👆', tip:'Tap once = ✕ mark. Tap the SAME cell twice = 😺 cat.', sub:'Try it — place your first cat!', op:true,
+    draw(){ paintCell(GATE(),'spot',''); } },
+];
+
+let tutTimer=null;
+function tutLoop(){ clearInterval(tutTimer);
+  tutTimer=setInterval(()=>{ if(tutorialActive&&tutStep===TUT_TOTAL-1) positionFinger(); else clearInterval(tutTimer); },600); }
+function positionFinger(){
+  if(tutStep!==TUT_TOTAL-1) return;
   const g=document.getElementById('game').getBoundingClientRect();
-  const rect=target.getBoundingClientRect();
-  const f=document.getElementById('tutFinger'), tip=document.getElementById('tutTip');
+  const rect=cells[GATE()].getBoundingClientRect();
+  const f=document.getElementById('tutFinger');
   f.style.left=(rect.left+rect.width/2-g.left-13)+'px';
   f.style.top=(rect.top+rect.height/2-g.top-4)+'px';
-  let tipy=rect.top-g.top-52;
-  if(tipy<96) tipy=rect.bottom-g.top+14;   /* 不盖标题/状态行 */
-  tip.style.setProperty('--tipy',tipy+'px');
+}
+function setDots(step){
+  const box=document.getElementById('coachDots'); box.innerHTML='';
+  for(let i=0;i<TUT_TOTAL;i++){ const d=document.createElement('div'); d.className='dot'+(i===step?' on':''); box.appendChild(d); }
+}
+function gotoStep(n){
+  tutStep=n; clearPaint();
+  const step=TUT[n], coach=document.getElementById('coach'), next=document.getElementById('coachNext');
+  document.getElementById('coachIcon').textContent=step.icon;
+  document.getElementById('coachTip').textContent=step.tip;
+  document.getElementById('coachSub').textContent=step.sub||'';
+  setDots(n); step.draw();
+  if(step.op){
+    coach.classList.add('pass'); next.classList.add('wait');
+    document.getElementById('tut').classList.add('show');
+    positionFinger(); tutLoop();
+  } else {
+    coach.classList.remove('pass'); next.classList.remove('wait');
+    next.textContent = (n===TUT_TOTAL-2)? 'Got it! →' : 'Next →';
+    document.getElementById('tut').classList.remove('show');
+  }
+  sndTap();
 }
 function setupTutorial(){
   if(store.get('cs_tut')) return;
-  document.getElementById('rules').classList.add('show');   /* 先看规则卡 */
+  const sol=solveCompat(N,region,{}); if(!sol) return;
+  demoC0=sol[0]; tutorialActive=true;
+  document.getElementById('coach').classList.add('show');
+  gotoStep(0);
 }
-document.getElementById('startBtn').addEventListener('click',()=>{
-  document.getElementById('rules').classList.remove('show');
-  tutorialActive=true;
-  document.getElementById('tut').classList.add('show');
-  positionTutorial(); tutLoop();
-  sndTap();
+document.getElementById('coachNext').addEventListener('click',()=>{
+  if(tutStep<TUT_TOTAL-1) gotoStep(tutStep+1);
 });
 function endTutorial(grad){
   document.getElementById('tut').classList.remove('show');
-  if(grad){ tutorialActive=false; store.set('cs_tut','1'); showToast('Purrfect! 😸'); }
+  document.getElementById('coach').classList.remove('show','pass');
+  clearInterval(tutTimer); clearPaint(); render();
+  if(grad){ tutorialActive=false; store.set('cs_tut','1'); showToast('Purrfect! You got it 😸'); }
 }
-window.addEventListener('resize',()=>{ if(tutorialActive) setTimeout(positionTutorial,80); });
+window.addEventListener('resize',()=>{ if(tutorialActive) setTimeout(positionFinger,80); });
 
 level=(+store.get('cs_level'))||1;
 newLevel();
