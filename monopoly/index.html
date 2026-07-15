@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#2b3a67">
+<title>Monopoly Go</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; }
+  html,body { min-height:100%; }
+  body {
+    background: radial-gradient(130% 90% at 50% 0%, #3d5089 0%, #2b3a67 55%, #1f2b4f 100%);
+    font-family: -apple-system, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+    color:#fff; display:flex; justify-content:center;
+    padding: max(env(safe-area-inset-top),10px) 8px max(env(safe-area-inset-bottom),16px);
+  }
+  #app { width:min(96vw, 440px); }
+
+  /* ===== 顶栏 ===== */
+  #topbar { display:flex; gap:8px; margin-bottom:8px; }
+  .pill { flex:1; background:rgba(10,16,40,.72); border-radius:12px; padding:6px 10px;
+    box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.08); text-align:center; position:relative; }
+  .pill .lab { font-size:10px; color:#9fb0e8; font-weight:700; }
+  .pill .val { font-size:16px; font-weight:900; }
+  .pill .sub { font-size:10px; color:#f5b93d; font-weight:700; min-height:12px; }
+  #shareBtn { flex:0 0 auto; background:linear-gradient(#ffd35c,#f5a623); color:#5a3a00; border:none;
+    border-radius:12px; font-weight:900; font-size:13px; padding:0 14px; box-shadow:0 3px 0 #b97a10; }
+  #shareBtn:active { transform:translateY(2px); box-shadow:0 1px 0 #b97a10; }
+
+  /* ===== 棋盘 ===== */
+  #boardWrap { position:relative; }
+  #board { display:grid; grid-template-columns:repeat(5,1fr); grid-template-rows:repeat(5,1fr);
+    gap:4px; aspect-ratio:1; }
+  .cell { border-radius:10px; background:rgba(16,24,56,.85); position:relative;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.09); overflow:hidden; }
+  .cell .ico { font-size:clamp(16px,5vw,22px); line-height:1.1; }
+  .cell .coef { font-size:clamp(9px,2.6vw,11px); font-weight:800; color:#8ee08e; }
+  .cell.type-go   { background:linear-gradient(160deg,#2e7d46,#1d5730); }
+  .cell.type-tax  { background:linear-gradient(160deg,#8a3038,#5d1e26); }
+  .cell.type-chance { background:linear-gradient(160deg,#7a5b1f,#57400f); }
+  .cell.type-rest { background:linear-gradient(160deg,#3a4a7a,#2a3760); }
+  .cell.active { box-shadow: inset 0 0 0 2.5px #ffd35c, 0 0 14px rgba(255,211,92,.55); }
+  .cell.flash { animation:cellFlash .5s ease; }
+  @keyframes cellFlash { 0%{filter:brightness(2.2)} 100%{filter:brightness(1)} }
+  #token { position:absolute; width:9%; aspect-ratio:1; z-index:5; pointer-events:none;
+    font-size:clamp(18px,5.6vw,26px); display:flex; align-items:center; justify-content:center;
+    transition: left .13s ease, top .13s ease; filter:drop-shadow(0 3px 3px rgba(0,0,0,.5));
+    transform:translate(-50%,-58%); }
+
+  /* ===== 棋盘中心 ===== */
+  #center { grid-area: 2 / 2 / 5 / 5; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:6px; background:rgba(10,16,40,.6); border-radius:14px;
+    box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.07); padding:8px; }
+  #cityName { font-weight:900; font-size:clamp(15px,4.4vw,19px); letter-spacing:1px; }
+  #rentInfo { font-size:clamp(10px,3vw,12px); color:#9fb0e8; font-weight:700; text-align:center; }
+  #diceFaces { display:flex; gap:10px; height:clamp(34px,10vw,44px); }
+  .die { width:clamp(34px,10vw,44px); height:clamp(34px,10vw,44px); background:#fff; color:#222;
+    border-radius:9px; display:flex; align-items:center; justify-content:center;
+    font-size:clamp(20px,6vw,26px); font-weight:900; box-shadow:0 3px 6px rgba(0,0,0,.4); }
+  .die.rolling { animation:diceShake .09s infinite; }
+  @keyframes diceShake { 0%{transform:rotate(-8deg)} 50%{transform:rotate(8deg)} 100%{transform:rotate(-8deg)} }
+  #rollBtn { background:linear-gradient(#7ee081,#3fa04a); border:none; color:#fff; font-weight:900;
+    font-size:clamp(15px,4.4vw,18px); padding:10px 26px; border-radius:14px;
+    box-shadow:0 4px 0 #1f6b2a; letter-spacing:1px; }
+  #rollBtn:active { transform:translateY(2px); box-shadow:0 2px 0 #1f6b2a; }
+  #rollBtn:disabled { filter:grayscale(.7); opacity:.7; }
+
+  /* ===== 建筑面板 ===== */
+  #buildings { margin-top:10px; display:flex; flex-direction:column; gap:7px; }
+  .bld { display:flex; align-items:center; gap:10px; background:rgba(10,16,40,.72);
+    border-radius:13px; padding:8px 10px; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.07); }
+  .bld .bico { font-size:26px; width:38px; text-align:center; }
+  .bld .binfo { flex:1; min-width:0; }
+  .bld .bname { font-weight:800; font-size:13px; }
+  .bld .pips { display:flex; gap:3px; margin-top:3px; }
+  .pip { width:14px; height:6px; border-radius:3px; background:rgba(255,255,255,.15); }
+  .pip.on { background:#7ee081; }
+  .upBtn { border:none; border-radius:10px; font-weight:900; font-size:12px; padding:8px 10px;
+    min-width:86px; background:linear-gradient(#ffd35c,#f5a623); color:#5a3a00; box-shadow:0 3px 0 #b97a10; }
+  .upBtn:active { transform:translateY(2px); box-shadow:0 1px 0 #b97a10; }
+  .upBtn:disabled { background:#4a5578; color:#8b96b8; box-shadow:0 3px 0 #333c58; }
+  .upBtn.maxed { background:#2e7d46; color:#c9f5cf; box-shadow:0 3px 0 #1d5730; }
+
+  /* ===== 飘字 ===== */
+  .float { position:fixed; z-index:60; font-weight:900; font-size:17px; pointer-events:none;
+    text-shadow:0 2px 4px rgba(0,0,0,.6); animation:floatUp 1.1s ease forwards; }
+  @keyframes floatUp { 0%{opacity:0; transform:translate(-50%,0) scale(.7)} 15%{opacity:1; transform:translate(-50%,-8px) scale(1.1)}
+    100%{opacity:0; transform:translate(-50%,-52px) scale(1)} }
+
+  /* ===== 弹窗 ===== */
+  .mask { position:fixed; inset:0; background:rgba(5,8,22,.72); z-index:80;
+    display:flex; align-items:center; justify-content:center; padding:20px; }
+  .modal { width:min(88vw,340px); background:linear-gradient(#39477e,#242f57); border-radius:18px;
+    padding:22px 18px; text-align:center; box-shadow:0 10px 40px rgba(0,0,0,.5), inset 0 0 0 2px rgba(255,255,255,.1);
+    animation:pop .25s ease; }
+  @keyframes pop { 0%{transform:scale(.75); opacity:0} 100%{transform:scale(1); opacity:1} }
+  .modal .mico { font-size:44px; }
+  .modal .mtitle { font-size:19px; font-weight:900; margin:8px 0 6px; }
+  .modal .mbody { font-size:14px; color:#c6d1f5; font-weight:600; line-height:1.55; }
+  .modal .mbtn { margin-top:16px; width:100%; border:none; border-radius:12px; padding:12px;
+    font-size:15px; font-weight:900; background:linear-gradient(#7ee081,#3fa04a); color:#fff;
+    box-shadow:0 4px 0 #1f6b2a; }
+  .modal .mbtn:active { transform:translateY(2px); box-shadow:0 2px 0 #1f6b2a; }
+  .modal .mbtn.gold { background:linear-gradient(#ffd35c,#f5a623); color:#5a3a00; box-shadow:0 4px 0 #b97a10; }
+
+  /* 分享弹窗 */
+  #helperRow { display:flex; justify-content:center; gap:8px; margin:14px 0 4px; }
+  .hSlot { width:44px; height:44px; border-radius:50%; background:rgba(255,255,255,.1);
+    display:flex; align-items:center; justify-content:center; font-size:22px;
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,.18); }
+  .hSlot.filled { background:linear-gradient(#ffd35c,#f5a623); box-shadow:0 0 10px rgba(255,211,92,.6); }
+  .hHint { font-size:11px; color:#9fb0e8; font-weight:600; margin-top:6px; }
+
+  /* 机会卡 */
+  #chanceCard { perspective:600px; }
+  #chanceCard .cardInner { width:120px; height:160px; margin:0 auto; border-radius:14px;
+    background:linear-gradient(150deg,#ffd35c,#e08c1a); display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:8px; color:#5a3a00; font-weight:900;
+    box-shadow:0 8px 24px rgba(0,0,0,.45); animation:cardIn .45s ease; }
+  @keyframes cardIn { 0%{transform:rotateY(90deg)} 100%{transform:rotateY(0)} }
+  #chanceCard .cardInner .ci { font-size:40px; }
+  #chanceCard .cardInner .ct { font-size:15px; padding:0 8px; text-align:center; }
+
+  #debug { position:fixed; left:8px; bottom:8px; z-index:90; display:flex; gap:6px; flex-wrap:wrap; max-width:200px; }
+  #debug button { font-size:11px; padding:5px 8px; border-radius:8px; border:none;
+    background:#5a3a8a; color:#fff; font-weight:700; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <div class="pill"><div class="lab">现金</div><div class="val" id="cashVal">$0</div><div class="sub" id="rentTier"></div></div>
+    <div class="pill"><div class="lab">骰子</div><div class="val" id="diceVal">🎲 0</div><div class="sub" id="regenTimer"></div></div>
+    <button id="shareBtn">分享<br>得骰子</button>
+  </div>
+
+  <div id="boardWrap">
+    <div id="board"></div>
+    <div id="token">🚗</div>
+  </div>
+
+  <div id="buildings"></div>
+</div>
+
+<div id="debug" style="display:none">
+  <button onclick="cheat('cash')">+5万金</button>
+  <button onclick="cheat('dice')">+50骰</button>
+  <button onclick="cheat('fast')">秒恢复</button>
+  <button onclick="cheat('reset')">清存档</button>
+</div>
+
+<script>
+'use strict';
+/* ================= 数值配置（源自飞书需求终稿数值表） ================= */
+// 棋盘 16 格：ID 顺序 = 行走顺序（表 0FArc5）
+const BOARD = [
+  {t:'go'},            {t:'rent',c:0.4}, {t:'chance'},     {t:'rent',c:0.5},
+  {t:'tax'},           {t:'rent',c:0.7}, {t:'rent',c:0.9}, {t:'rent',c:1.0},
+  {t:'rest'},          {t:'rent',c:1.1}, {t:'chance'},     {t:'rent',c:1.3},
+  {t:'tax'},           {t:'rent',c:1.5}, {t:'rent',c:1.8}, {t:'rent',c:2.2},
+];
+// 基础租金门槛：[当前地图累计消耗骰子, 基础租金]（表 f2olYD）
+const RENT_TIERS = {
+  1: [[4,150],[9,177],[14,209],[19,247],[25,291],[31,344],[38,405],[45,478],[53,564],[62,666],[71,786],[81,927],[91,1094],[103,1290],[115,1523]],
+  2: [[5,600],[10,708],[16,836],[22,986],[28,1164],[35,1373],[41,1620],[48,1912],[56,2256],[63,2662],[71,3141],[79,3706],[88,4373],[97,5160],[106,6089],[116,7185],[126,8478],[137,10004],[148,11804],[160,13929],[172,16436],[184,19395],[197,22886],[211,27005],[225,31866]],
+};
+// 建筑升级成本（表 Cx8w4v / hv5bGf）：[建筑][等级]
+const COSTS = {
+  1: [[280,920,3020],[350,1160,3840],[450,1480,4880],[570,1880,6190],[720,2380,7858]],
+  2: [[1330,3745,10540,29680,83550],[1640,4610,12965,36500,102770],[2010,5665,15950,44900,126400],[2475,6970,19615,55225,155480],[3045,8570,24130,67930,191230]],
+};
+// 升级奖励金币：按该地图第 N 次升级取值（表 iwMo67）
+const REWARD_COINS = {
+  1: [770,980,1250,1580,2000,2550,3250,4100,5200,6600,8400,10700,13600,17200,21820],
+  2: [260,320,395,485,600,735,905,1115,1370,1685,2075,2550,3140,3860,4750,5840,7180,8835,10865,13360,16435,20210,24870,30590,37570],
+};
+// 特殊奖励：第 N 次升级 → 奖励文案（表 iwMo67 其他奖励列）
+const REWARD_SPECIAL = {
+  1: {3:'专属礼物卡×1（💎500）',6:'专属礼物卡×1（💎500）',9:'专属礼物卡×1（💎500）',12:'专属礼物卡×1（💎500）',15:'TAG×3日'},
+  2: {5:'初级聊天气泡×3日',10:'初级moment卡片×3日',15:'初级头像框×3日',20:'主页特效×3日',25:'进场特效×3日'},
+};
+// 骰子产出（表 9JbKEI）
+const DICE_INIT = 50, DICE_CAP = 100, REGEN_MS = 600*1000, REGEN_AMT = 40, MAP2_GIFT = 20;
+// 分享助力：每个好友 10 骰，上限 5 人
+const HELPER_DICE = 10, HELPER_MAX = 5;
+// 机会格（表 gM1KMP）：25% +3骰子 / 25% -1倍租金 / 50% +3倍租金
+// GO格：经过 +1倍租金；正好落上 +3倍租金 +3骰子。税格：-0.5倍租金
+const MAPS = {
+  1: { name:'伊斯坦布尔', token:'🚗', builds:[
+      ['🕌','蓝色清真寺'],['🗼','加拉塔塔'],['🏬','大巴扎'],['🌉','博斯普鲁斯大桥'],['🏰','托普卡帕宫']] },
+  2: { name:'安卡拉', token:'🚕', builds:[
+      ['🏛️','国父陵'],['🏯','安卡拉城堡'],['🕌','科贾特佩清真寺'],['🖼️','安纳托利亚博物馆'],['🗼','阿塔库勒塔']] },
+};
+
+/* ================= 状态 ================= */
+const SAVE_KEY = 'monopoly_save_v1';
+let S = {
+  map:1, dice:DICE_INIT, cash:0, pos:0,
+  diceSpent:0,               // 当前地图累计消耗骰子
+  levels:[0,0,0,0,0],        // 当前地图 5 个建筑等级
+  upgrades:0,                // 当前地图累计升级次数
+  helpers:0,                 // 已助力好友数
+  regenStart:null,           // 恢复计时起点（>=上限时为 null）
+  finished:false,
+};
+let rolling = false;
+
+function save(){ localStorage.setItem(SAVE_KEY, JSON.stringify(S)); }
+function load(){
+  try { const d = JSON.parse(localStorage.getItem(SAVE_KEY)); if (d && d.levels) S = Object.assign(S, d); } catch(e){}
+}
+// 埋点桩：正式版接 ThinkingData
+function track(ev, props){ console.log('[track]', ev, props||{}); }
+
+/* ================= 数值查询 ================= */
+function baseRent(){
+  const tiers = RENT_TIERS[S.map];
+  let r = tiers[0][1];
+  for (const [th,v] of tiers) if (S.diceSpent >= th) r = v;
+  return r;
+}
+function rentTierIdx(){
+  const tiers = RENT_TIERS[S.map];
+  let i = 0;
+  for (let k=0;k<tiers.length;k++) if (S.diceSpent >= tiers[k][0]) i = k+1;
+  return i;
+}
+const fmt = n => n >= 10000 ? (n/1000).toFixed(1).replace(/\.0$/,'')+'k' : (''+Math.round(n));
+
+/* ================= 渲染 ================= */
+// 16 格 → 5×5 外圈坐标（从右下角逆时针，corners: GO/税/休息/税）
+const GRID_POS = [
+  [5,5],[5,4],[5,3],[5,2],[5,1],   // 底边 右→左
+  [4,1],[3,1],[2,1],[1,1],         // 左边 下→上
+  [1,2],[1,3],[1,4],[1,5],         // 顶边 左→右
+  [2,5],[3,5],[4,5],               // 右边 上→下
+];
+const CELL_UI = { go:['🚀','GO'], chance:['❓',''], tax:['💸',''], rest:['😴',''], rent:['🏠',''] };
+
+function buildBoard(){
+  const b = document.getElementById('board');
+  b.innerHTML = '';
+  BOARD.forEach((cell,i)=>{
+    const d = document.createElement('div');
+    d.className = 'cell type-'+cell.t;
+    d.id = 'cell'+i;
+    d.style.gridArea = `${GRID_POS[i][0]} / ${GRID_POS[i][1]}`;
+    const [ico,lab] = CELL_UI[cell.t];
+    d.innerHTML = `<div class="ico">${ico}</div>` +
+      (cell.t==='rent' ? `<div class="coef">×${cell.c}</div>` : (lab?`<div class="coef" style="color:#ffd35c">${lab}</div>`:''));
+    b.appendChild(d);
+  });
+  const c = document.createElement('div');
+  c.id = 'center';
+  c.innerHTML = `<div id="cityName"></div><div id="rentInfo"></div>
+    <div id="diceFaces"><div class="die" id="die1">?</div><div class="die" id="die2">?</div></div>
+    <button id="rollBtn">掷骰子 -1🎲</button>`;
+  b.appendChild(c);
+  document.getElementById('rollBtn').onclick = roll;
+}
+
+function buildBuildings(){
+  const wrap = document.getElementById('buildings');
+  wrap.innerHTML = '';
+  const maxLv = COSTS[S.map][0].length;
+  MAPS[S.map].builds.forEach(([ico,name],i)=>{
+    const d = document.createElement('div');
+    d.className = 'bld';
+    d.innerHTML = `<div class="bico">${ico}</div>
+      <div class="binfo"><div class="bname">${name}</div>
+      <div class="pips">${Array.from({length:maxLv},(_,k)=>`<div class="pip" id="pip_${i}_${k}"></div>`).join('')}</div></div>
+      <button class="upBtn" id="up${i}" onclick="upgrade(${i})"></button>`;
+    wrap.appendChild(d);
+  });
+}
+
+function placeToken(animate){
+  const cell = document.getElementById('cell'+S.pos);
+  const board = document.getElementById('board');
+  const t = document.getElementById('token');
+  if (!animate) t.style.transition = 'none';
+  t.style.left = (cell.offsetLeft + cell.offsetWidth/2) / board.offsetWidth*100 + '%';
+  t.style.top  = (cell.offsetTop + cell.offsetHeight/2) / board.offsetHeight*100 + '%';
+  if (!animate) requestAnimationFrame(()=>{ t.style.transition = ''; });
+}
+
+function render(){
+  document.getElementById('cashVal').textContent = '$' + fmt(S.cash);
+  document.getElementById('diceVal').textContent = '🎲 ' + S.dice;
+  document.getElementById('cityName').textContent = '📍 ' + MAPS[S.map].name;
+  document.getElementById('rentInfo').innerHTML =
+    `基础租金 <b style="color:#8ee08e">$${baseRent()}</b> · 已投 ${S.diceSpent} 骰<br>租金等级 ${rentTierIdx()}/${RENT_TIERS[S.map].length}`;
+  document.getElementById('rentTier').textContent = '租金 $' + baseRent();
+  document.getElementById('token').textContent = MAPS[S.map].token;
+  document.querySelectorAll('.cell').forEach((c,i)=>c.classList.toggle('active', c.id==='cell'+S.pos));
+  const maxLv = COSTS[S.map][0].length;
+  MAPS[S.map].builds.forEach((_,i)=>{
+    const lv = S.levels[i];
+    for (let k=0;k<maxLv;k++) document.getElementById(`pip_${i}_${k}`).classList.toggle('on', k<lv);
+    const btn = document.getElementById('up'+i);
+    if (lv >= maxLv){ btn.textContent = '已满级'; btn.disabled = true; btn.className = 'upBtn maxed'; }
+    else {
+      const cost = COSTS[S.map][i][lv];
+      btn.className = 'upBtn';
+      btn.innerHTML = `升${lv+1}级<br>$${fmt(cost)}`;
+      btn.disabled = S.cash < cost || rolling;
+    }
+  });
+  document.getElementById('rollBtn').disabled = rolling || S.dice <= 0;
+  save();
+}
+
+/* ================= 飘字 & 音效 ================= */
+function floatText(txt, color, el){
+  const r = (el || document.getElementById('board')).getBoundingClientRect();
+  const f = document.createElement('div');
+  f.className = 'float';
+  f.style.color = color;
+  f.style.left = (r.left + r.width/2 + (Math.random()*30-15)) + 'px';
+  f.style.top  = (r.top + r.height*0.35) + 'px';
+  f.textContent = txt;
+  document.body.appendChild(f);
+  setTimeout(()=>f.remove(), 1100);
+}
+let AC = null;
+function beep(freq, dur, type){
+  try {
+    AC = AC || new (window.AudioContext||window.webkitAudioContext)();
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = type||'square'; o.frequency.value = freq;
+    g.gain.setValueAtTime(.08, AC.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001, AC.currentTime + dur);
+    o.connect(g); g.connect(AC.destination); o.start(); o.stop(AC.currentTime + dur);
+  } catch(e){}
+}
+
+/* ================= 现金 / 骰子变动 ================= */
+function addCash(n, reason, el){
+  if (!n) return;
+  S.cash = Math.max(0, S.cash + n);
+  track('money_change_server', {reason, change:n});
+  floatText((n>0?'+$':'-$') + fmt(Math.abs(n)), n>0?'#8ee08e':'#ff8a8a', el);
+  beep(n>0?880:220, .12, n>0?'square':'sawtooth');
+}
+function addDice(n, reason){
+  if (!n) return;
+  S.dice = Math.max(0, S.dice + n);
+  track('dice_change_server', {reason, change:n});
+  if (n>0) floatText('+'+n+'🎲', '#ffd35c');
+  checkRegenAnchor();
+}
+// 骰子恢复：<上限时计时，满 10 分钟 +40；≥上限暂停
+function checkRegenAnchor(){
+  if (S.dice >= DICE_CAP) S.regenStart = null;
+  else if (S.regenStart == null) S.regenStart = Date.now();
+}
+function regenTick(){
+  checkRegenAnchor();
+  const el = document.getElementById('regenTimer');
+  if (S.regenStart == null){ el.textContent = '已满,暂停恢复'; return; }
+  let changed = false;
+  while (S.regenStart != null && Date.now() - S.regenStart >= REGEN_MS){
+    S.dice += REGEN_AMT; changed = true;
+    track('dice_change_server', {reason:'恢复得骰子', change:REGEN_AMT});
+    S.regenStart = S.dice < DICE_CAP ? S.regenStart + REGEN_MS : null;
+  }
+  if (changed){ floatText('+'+REGEN_AMT+'🎲 恢复', '#ffd35c'); render(); }
+  if (S.regenStart != null){
+    const left = Math.max(0, REGEN_MS - (Date.now() - S.regenStart));
+    const m = Math.floor(left/60000), s = Math.floor(left%60000/1000);
+    el.textContent = `${m}:${(''+s).padStart(2,'0')} 后 +${REGEN_AMT}`;
+  } else el.textContent = '已满,暂停恢复';
+}
+
+/* ================= 掷骰子主流程 ================= */
+async function roll(){
+  if (rolling) return;
+  if (S.dice <= 0){ showNoDice(); return; }
+  rolling = true;
+  addDice(-1, '丢骰子消耗');
+  S.diceSpent++;                       // 累计投骰 → 可能推高基础租金
+  render();
+  track('cocos_click', {page_name:'monopoly', btn:'roll'});
+
+  // 骰子动画
+  const d1 = document.getElementById('die1'), d2 = document.getElementById('die2');
+  d1.classList.add('rolling'); d2.classList.add('rolling');
+  const shake = setInterval(()=>{ d1.textContent = 1+Math.random()*6|0; d2.textContent = 1+Math.random()*6|0; beep(600+Math.random()*300,.03); }, 90);
+  await sleep(650);
+  clearInterval(shake);
+  d1.classList.remove('rolling'); d2.classList.remove('rolling');
+  const v1 = 1+Math.random()*6|0, v2 = 1+Math.random()*6|0;
+  d1.textContent = v1; d2.textContent = v2;
+  const steps = v1 + v2;
+
+  // 逐格移动；经过 GO(不停)：+1倍租金
+  for (let i=0; i<steps; i++){
+    S.pos = (S.pos + 1) % 16;
+    placeToken(true);
+    document.querySelectorAll('.cell').forEach((c)=>c.classList.toggle('active', c.id==='cell'+S.pos));
+    beep(400 + i*30, .04, 'triangle');
+    if (S.pos === 0 && i < steps-1){
+      addCash(baseRent()*1, '丢骰子获得', document.getElementById('cell0'));
+      document.getElementById('cell0').classList.add('flash');
+      setTimeout(()=>document.getElementById('cell0').classList.remove('flash'), 500);
+    }
+    await sleep(140);
+  }
+
+  // 落格结算
+  await landEffect();
+  rolling = false;
+  render();
+}
+
+async function landEffect(){
+  const cell = BOARD[S.pos];
+  const el = document.getElementById('cell'+S.pos);
+  el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'), 500);
+  const R = baseRent();
+  await sleep(180);
+  if (cell.t === 'rent'){
+    addCash(Math.round(R * cell.c), '丢骰子获得', el);
+  } else if (cell.t === 'go'){
+    addCash(R*3, '丢骰子获得', el);
+    addDice(3, 'GO格奖励');
+  } else if (cell.t === 'tax'){
+    addCash(-Math.round(R*0.5), '税格扣除', el);
+  } else if (cell.t === 'chance'){
+    await drawChance(R);
+  } // rest: 什么都不发生
+}
+
+// 机会卡：25% +3骰子 / 25% -1倍租金 / 50% +3倍租金
+function drawChance(R){
+  return new Promise(res=>{
+    const r = Math.random();
+    let ico, txt, apply;
+    if (r < 0.25){ ico='🎲'; txt='+3 骰子'; apply=()=>addDice(3,'机会卡'); }
+    else if (r < 0.5){ ico='💸'; txt=`罚款 -$${fmt(R)}`; apply=()=>addCash(-R,'机会卡罚款'); }
+    else { ico='💰'; txt=`大奖 +$${fmt(R*3)}`; apply=()=>addCash(R*3,'机会卡大奖'); }
+    const m = document.createElement('div');
+    m.className = 'mask'; m.id = 'chanceCard';
+    m.innerHTML = `<div><div class="cardInner"><div class="ci">${ico}</div><div class="ct">机会卡<br>${txt}</div></div></div>`;
+    document.body.appendChild(m);
+    beep(1000,.15,'sine');
+    setTimeout(()=>{ apply(); render(); }, 500);
+    setTimeout(()=>{ m.remove(); res(); }, 1400);
+  });
+}
+
+/* ================= 建筑升级 ================= */
+function upgrade(i){
+  const lv = S.levels[i], maxLv = COSTS[S.map][i].length;
+  if (lv >= maxLv) return;
+  const cost = COSTS[S.map][i][lv];
+  if (S.cash < cost) return;
+  S.cash -= cost;
+  track('money_change_server', {reason:'建造消耗', change:-cost, tid:`${S.map}_${i+1}_${lv+1}`});
+  S.levels[i] = lv+1;
+  S.upgrades++;
+  beep(660,.1); setTimeout(()=>beep(880,.12),100);
+  // 升级奖励金币
+  const coins = REWARD_COINS[S.map][S.upgrades-1] || 0;
+  if (coins) addCash(coins, '升级奖励');
+  const special = REWARD_SPECIAL[S.map][S.upgrades];
+  render();
+  const done = S.levels.every((l,k)=>l >= COSTS[S.map][k].length);
+  const bname = MAPS[S.map].builds[i][1];
+  showModal('🎉', `${bname} 升到 ${lv+1} 级!`,
+    `获得金币 <b style="color:#ffd35c">$${fmt(coins)}</b>` + (special?`<br>额外奖励:<b style="color:#8ee08e">${special}</b>`:''),
+    done ? ()=>mapComplete() : null);
+}
+
+function mapComplete(){
+  if (S.map === 1){
+    showModal('🗺️', '伊斯坦布尔建设完成!', `解锁新地图 <b>安卡拉</b>!<br>进图赠送 <b style="color:#ffd35c">${MAP2_GIFT}🎲</b>`, ()=>{
+      S.map = 2; S.levels = [0,0,0,0,0]; S.upgrades = 0; S.diceSpent = 0; S.pos = 0;
+      addDice(MAP2_GIFT, '进图赠送');
+      buildBuildings(); buildBoard(); // 重绑事件
+      placeToken(false); render();
+      track('cocos_pv', {page_name:'monopoly', map:2});
+    });
+  } else if (!S.finished){
+    S.finished = true;
+    showModal('🏆', '恭喜通关!', '两张地图全部建设完成!<br>获得 <b style="color:#8ee08e">进场特效×3日</b><br>冲击 Top10 称号榜!');
+  }
+}
+
+/* ================= 弹窗 ================= */
+function showModal(ico, title, body, onClose, btnTxt){
+  const m = document.createElement('div');
+  m.className = 'mask';
+  m.innerHTML = `<div class="modal"><div class="mico">${ico}</div><div class="mtitle">${title}</div>
+    <div class="mbody">${body}</div><button class="mbtn">${btnTxt||'太好了'}</button></div>`;
+  m.querySelector('.mbtn').onclick = ()=>{ m.remove(); if (onClose) onClose(); };
+  document.body.appendChild(m);
+}
+
+function showNoDice(){
+  showModal('🎲', '骰子用完啦', '等待自动恢复(每10分钟+40)<br>或者分享给好友,每人助力 +10🎲', ()=>showShare(), '去分享');
+}
+
+/* ================= 分享助力 ================= */
+function showShare(){
+  const m = document.createElement('div');
+  m.className = 'mask';
+  const slots = Array.from({length:HELPER_MAX},(_,i)=>
+    `<div class="hSlot ${i<S.helpers?'filled':''}" data-i="${i}">${i<S.helpers?'😊':'+'}</div>`).join('');
+  m.innerHTML = `<div class="modal"><div class="mico">🎁</div><div class="mtitle">分享得骰子</div>
+    <div class="mbody">邀请好友助力,每人 <b style="color:#ffd35c">+${HELPER_DICE}🎲</b>,上限 ${HELPER_MAX} 人<br>已获得 <b>${S.helpers*HELPER_DICE}</b> 🎲</div>
+    <div id="helperRow">${slots}</div>
+    <div class="hHint">演示版:点空位模拟好友助力</div>
+    <button class="mbtn gold" id="copyLink">复制邀请链接</button>
+    <button class="mbtn" id="shareClose" style="margin-top:8px">关闭</button></div>`;
+  document.body.appendChild(m);
+  m.querySelectorAll('.hSlot').forEach(s=>{
+    s.onclick = ()=>{
+      const i = +s.dataset.i;
+      if (i !== S.helpers || S.helpers >= HELPER_MAX) return;
+      S.helpers++;
+      addDice(HELPER_DICE, '分享获得');
+      render(); m.remove(); showShare();
+    };
+  });
+  m.querySelector('#copyLink').onclick = ()=>{
+    const url = location.href.split('#')[0] + '#invite';
+    (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(
+      ()=>floatText('链接已复制', '#8ee08e'), ()=>prompt('复制链接:', url));
+  };
+  m.querySelector('#shareClose').onclick = ()=>m.remove();
+  track('cocos_click', {page_name:'monopoly', btn:'share'});
+}
+
+/* ================= 调试 ================= */
+function cheat(k){
+  if (k==='cash') { S.cash += 50000; }
+  if (k==='dice') { S.dice += 50; }
+  if (k==='fast') { if (S.regenStart!=null) S.regenStart -= REGEN_MS; regenTick(); }
+  if (k==='reset'){ localStorage.removeItem(SAVE_KEY); location.reload(); return; }
+  render();
+}
+
+/* ================= 启动 ================= */
+const sleep = ms => new Promise(r=>setTimeout(r, ms));
+document.getElementById('shareBtn').onclick = showShare;
+load();
+buildBoard();
+buildBuildings();
+checkRegenAnchor();
+regenTick();                       // 含离线补发
+setInterval(regenTick, 1000);
+render();
+placeToken(false);
+window.addEventListener('resize', ()=>placeToken(false));
+track('cocos_pv', {page_name:'monopoly', source:'home_button', session_id: Date.now()+''+ (Math.random()*1e4|0)});
+if (location.search.includes('debug')) document.getElementById('debug').style.display = 'flex';
+</script>
+</body>
+</html>
