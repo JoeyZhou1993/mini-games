@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="description" content="Color Doors — slide blocks out through matching doors!">
 <meta name="theme-color" content="#4a5aa8">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>Color Doors</title>
+<title>Renkli Kapılar</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
   html,body { height:100%; overflow:hidden; }
@@ -63,9 +63,30 @@
     86%{ left:var(--tx); top:var(--ty); transform:scale(1); }
     100%{ left:var(--tx); top:var(--ty); transform:scale(1); opacity:0; }
   }
-  #tutTip { position:absolute; left:50%; transform:translateX(-50%); top:var(--tipy);
-    background:#fff; color:#3a4256; font-weight:800; font-size:clamp(14px,4vw,18px);
-    padding:9px 20px; border-radius:20px; box-shadow:0 4px 12px rgba(60,70,100,.3); white-space:nowrap; }
+  /* 分步引导 coach(卡片在底部: L1 门在顶部, 互不遮挡) */
+  #coach { position:absolute; inset:-6px; display:none; }
+  #coach.show { display:block; }
+  #coachDim { position:absolute; inset:0; z-index:40; background:rgba(45,52,76,.6); border-radius:14px; transition:background .3s; }
+  #coach.pass #coachDim { background:rgba(45,52,76,.08); }
+  #coach.pass { pointer-events:none; }
+  .blockEl.spot { z-index:50 !important; }
+  .blockEl.spot .bc { box-shadow:0 0 0 3px #fff, 0 0 16px 4px rgba(255,255,255,.8), inset 0 3px 0 rgba(255,255,255,.4), inset 0 -4px 0 rgba(0,0,0,.22) !important; }
+  .door.spot { z-index:50 !important; box-shadow:0 0 0 3px #fff, 0 0 16px 5px rgba(255,255,255,.85), 0 0 10px var(--dc) !important; }
+  #coachBar { position:absolute; left:0; right:0; bottom:-2px; z-index:56;
+    background:#fff; border-radius:22px; padding:15px 22px 18px; text-align:center;
+    box-shadow:0 -3px 24px rgba(60,70,100,.3); animation:barUp2 .35s cubic-bezier(.34,1.4,.64,1); }
+  #coachDots { display:flex; gap:6px; justify-content:center; margin-bottom:11px; }
+  #coachDots .dot { width:7px; height:7px; border-radius:50%; background:#d5ddf2; transition:all .25s; }
+  #coachDots .dot.on { background:#4a72d8; width:20px; border-radius:4px; }
+  #coachIcon { font-size:clamp(30px,8vw,40px); line-height:1; margin-bottom:5px; }
+  #coachTip { color:#3a4256; font-weight:800; font-size:clamp(15px,4.2vw,19px); line-height:1.4; }
+  #coachSub { color:#8a93ab; font-weight:700; font-size:clamp(12px,3.4vw,14px); min-height:1.1em; margin-top:3px; }
+  #coachNext { margin-top:13px; border:none; cursor:pointer; font-size:clamp(15px,4.4vw,19px); font-weight:800; color:#fff;
+    padding:11px 42px; border-radius:14px; background:linear-gradient(180deg,#6f9bf5,#4a72d8);
+    box-shadow:0 5px 0 #3557ad, 0 7px 12px rgba(60,90,180,.35); }
+  #coachNext:active { transform:translateY(3px); box-shadow:0 2px 0 #3557ad; }
+  #coachNext.wait { display:none; }
+  @keyframes barUp2 { from{transform:translateY(30px); opacity:0;} to{transform:translateY(0); opacity:1;} }
 
   /* 弹窗: 白卡 */
   #over { position:absolute; inset:-6px; z-index:60; display:none; align-items:center; justify-content:center; border-radius:12px; background:rgba(230,232,240,.72); backdrop-filter:blur(4px); }
@@ -96,8 +117,8 @@
 <body>
 <div id="game">
   <div id="topbar">
-    <div id="title">🚪 Color Doors</div>
-    <div id="level">LEVEL 1</div>
+    <div id="title">🚪 Renkli Kapılar</div>
+    <div id="level">SEVİYE 1</div>
     <div id="btns">
       <button class="cbtn" id="resetBtn" title="Reset">↺</button>
       <button class="cbtn" id="exitBtn" title="Exit">✕</button>
@@ -105,17 +126,27 @@
   </div>
   <div id="arena">
     <div id="boardwrap"><div id="board"></div></div>
-    <div id="tut"><div id="tutTip">Drag the block to the door!</div><div id="tutFinger">👆</div></div>
+    <div id="tut"><div id="tutFinger">👆</div></div>
+  </div>
+  <div id="coach">
+    <div id="coachDim"></div>
+    <div id="coachBar">
+      <div id="coachDots"></div>
+      <div id="coachIcon">🚪</div>
+      <div id="coachTip"></div>
+      <div id="coachSub"></div>
+      <button id="coachNext">İleri →</button>
+    </div>
   </div>
   <div id="over"><div id="overCard">
     <div class="big">🎉</div>
-    <h2 id="overTitle">Level 1 complete!</h2>
-    <div class="sub">All blocks out!</div>
-    <button id="nextBtn">Next Level</button>
+    <h2 id="overTitle">Seviye 1 tamamlandı!</h2>
+    <div class="sub">Tüm bloklar çıktı!</div>
+    <button id="nextBtn">Sonraki Seviye</button>
   </div></div>
 </div>
 <div id="toast"></div>
-<div id="rotate"><div class="ph">📱</div><div>Rotate to portrait</div></div>
+<div id="rotate"><div class="ph">📱</div><div>Dikey moda çevirin</div></div>
 
 <script>
 /* ================= App桥 / 存储 / Toast(同底座) ================= */
@@ -123,7 +154,7 @@ const bridge={
   fullScreen(on){ try{ if(window.android&&window.android.setFullScreen) window.android.setFullScreen(!!on); }catch(e){} },
   exit(){ bridge.fullScreen(false);
     try{ if(window.android&&window.android.exitGame){ window.android.exitGame(); return; } }catch(e){}
-    showToast('Exit'); }
+    showToast('Çıkış'); }
 };
 bridge.fullScreen(true);
 const store={
@@ -230,7 +261,7 @@ function cellPx(){ return boardEl.clientWidth/N; }
 function newLevel(){
   boardEl.innerHTML=''; document.querySelectorAll('.door').forEach(d=>d.remove());
   playing=true;
-  document.getElementById('level').textContent='LEVEL '+level;
+  document.getElementById('level').textContent='SEVİYE '+level;
   document.getElementById('over').classList.remove('show');
   const data=getLevel(level);
   const s=cellPx();
@@ -320,7 +351,7 @@ function exitBlock(b,side){
   if(blocks.every(x=>x.out)){
     playing=false;
     setTimeout(()=>{ sndWin(); vib([50,60,50,60,80]);
-      document.getElementById('overTitle').textContent=`Level ${level} complete!`;
+      document.getElementById('overTitle').textContent=`Seviye ${level} tamamlandı!`;
       document.getElementById('over').classList.add('show');
       level++; store.set('cj_level',level);
     },450);
@@ -331,6 +362,7 @@ function exitBlock(b,side){
 let drag=null;
 document.addEventListener('pointerdown',e=>{
   if(!playing) return;
+  if(tutorialActive && tutStep!==TUT_TOTAL-1) return;   /* 引导说明步禁拖 */
   if(drag){ if(Date.now()-(drag.lastAct||0)>600) drag=null; else return; }
   const el=e.target.closest('.blockEl'); if(!el) return;
   const b=blocks[+el.dataset.bi]; if(!b||b.out) return;
@@ -384,24 +416,29 @@ window.addEventListener('blur',endDrag);
 
 /* ================= 控制 ================= */
 document.getElementById('nextBtn').addEventListener('click',()=>newLevel());
-document.getElementById('resetBtn').addEventListener('click',e=>{ e.stopPropagation(); tone(500,0.08,{vol:0.2,slide:300}); newLevel(); if(tutorialActive) setTimeout(positionTutorial,60); });
+document.getElementById('resetBtn').addEventListener('click',e=>{ e.stopPropagation(); tone(500,0.08,{vol:0.2,slide:300}); newLevel(); if(tutorialActive&&TUT[tutStep]) setTimeout(()=>{ clearSpot(); TUT[tutStep].draw(); positionTutorial(); },60); });
 document.getElementById('exitBtn').addEventListener('click',e=>{ e.stopPropagation(); bridge.exit(); });
 document.getElementById('resetBtn').addEventListener('pointerdown',e=>e.stopPropagation());
 document.getElementById('exitBtn').addEventListener('pointerdown',e=>e.stopPropagation());
-window.addEventListener('resize',()=>{ newLevel(); if(tutorialActive) setTimeout(positionTutorial,60); });
+window.addEventListener('resize',()=>{ newLevel(); if(tutorialActive&&TUT[tutStep]) setTimeout(()=>{ clearSpot(); TUT[tutStep].draw(); positionTutorial(); },60); });
 
-/* ===== 新手引导: L1 手指演示拖块到门, 首次出门毕业 ===== */
-let tutorialActive=false;
-let tutTimer=null;
+/* ===== 分步新手引导(coach + spotlight), 仅L1 ===== */
+let tutorialActive=false, tutStep=-1, tutTimer=null;
+const TUT_TOTAL=4;
+function clearSpot(){
+  document.querySelectorAll('.blockEl.spot,.door.spot').forEach(el=>el.classList.remove('spot'));
+}
+function spotBlock(){ const b=blocks.find(x=>!x.out); if(b) b.el.classList.add('spot'); }
+function spotDoors(){ document.querySelectorAll('.door').forEach(d=>d.classList.add('spot')); }
+const TUT=[
+  { icon:'🚪', tip:'Blokları kapılardan çıkar!', sub:'Hedef: tahtayı tamamen boşalt', draw(){} },
+  { icon:'🧱', tip:'Bloklar parmağınla kayar', sub:'Sürükleyip istediğin yöne it', draw(){ spotBlock(); } },
+  { icon:'🎨', tip:'Blok sadece AYNI renkteki kapıdan çıkar!', sub:'Rengi eşleştir', draw(){ spotBlock(); spotDoors(); } },
+  { icon:'👆', tip:'Şimdi dene — bloğu kapıya sürükle!', sub:'', op:true, draw(){ spotBlock(); spotDoors(); } },
+];
 function tutLoop(){
   clearInterval(tutTimer);
-  tutTimer=setInterval(()=>{ if(tutorialActive) positionTutorial(); else clearInterval(tutTimer); },600);
-}
-function setupTutorial(){
-  if(store.get('cj_tut') || level!==1 || !blocks.length) return;
-  tutorialActive=true;
-  document.getElementById('tut').classList.add('show');
-  positionTutorial(); tutLoop();
+  tutTimer=setInterval(()=>{ if(tutorialActive&&tutStep===TUT_TOTAL-1) positionTutorial(); else if(!tutorialActive) clearInterval(tutTimer); },600);
 }
 function positionTutorial(){
   if(!tutorialActive) return;
@@ -415,11 +452,41 @@ function positionTutorial(){
   f.style.setProperty('--fy',(bc.top+bc.height/2-ar.top-6)+'px');
   f.style.setProperty('--tx',(dr.left+dr.width/2-ar.left-14)+'px');
   f.style.setProperty('--ty',(dr.top+dr.height/2-ar.top-6)+'px');
-  document.getElementById('tutTip').style.setProperty('--tipy',(bc.top-ar.top-58)+'px');
 }
+function setDots(step){
+  const box=document.getElementById('coachDots'); box.innerHTML='';
+  for(let i=0;i<TUT_TOTAL;i++){ const d=document.createElement('div'); d.className='dot'+(i===step?' on':''); box.appendChild(d); }
+}
+function gotoStep(n){
+  tutStep=n; clearSpot();
+  const step=TUT[n], coach=document.getElementById('coach'), next=document.getElementById('coachNext');
+  document.getElementById('coachIcon').textContent=step.icon;
+  document.getElementById('coachTip').textContent=step.tip;
+  document.getElementById('coachSub').textContent=step.sub||'';
+  setDots(n); step.draw();
+  if(step.op){
+    coach.classList.add('pass'); next.classList.add('wait');
+    document.getElementById('tut').classList.add('show');
+    positionTutorial(); tutLoop();
+  } else {
+    coach.classList.remove('pass'); next.classList.remove('wait');
+    next.textContent=(n===TUT_TOTAL-2)? 'Anladım! →' : 'İleri →';
+    document.getElementById('tut').classList.remove('show');
+  }
+  tone(600,0.05,{vol:0.15});
+}
+function setupTutorial(){
+  if(store.get('cj_tut') || level!==1 || !blocks.length) return;
+  tutorialActive=true;
+  document.getElementById('coach').classList.add('show');
+  gotoStep(0);
+}
+document.getElementById('coachNext').addEventListener('click',()=>{ if(tutStep<TUT_TOTAL-1) gotoStep(tutStep+1); });
 function endTutorial(grad){
   document.getElementById('tut').classList.remove('show');
-  if(grad){ tutorialActive=false; store.set('cj_tut','1'); }
+  document.getElementById('coach').classList.remove('show','pass');
+  clearInterval(tutTimer); clearSpot();
+  if(grad){ tutorialActive=false; store.set('cj_tut','1'); showToast('Harika! 🚪'); }
 }
 
 level=(+store.get('cj_level'))||1;

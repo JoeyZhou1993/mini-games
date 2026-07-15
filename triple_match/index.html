@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="description" content="Triple Match — collect three of a kind, clear them all!">
 <meta name="theme-color" content="#4a5aa8">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>Triple Match</title>
+<title>Üçlü Eşleştir</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
   html,body { height:100%; overflow:hidden; }
@@ -58,14 +58,34 @@
   @keyframes barWarn { from{box-shadow:0 5px 0 #c3cfe0, 0 8px 16px rgba(70,100,140,.28);} to{box-shadow:0 5px 0 #d98a80, 0 0 22px rgba(230,90,70,.55);} }
 
   /* 新手引导 */
-  #tut { position:absolute; inset:0; z-index:45; pointer-events:none; display:none; }
+  #tut { position:absolute; inset:0; z-index:52; pointer-events:none; display:none; }
   #tut.show { display:block; }
   #tutFinger { position:absolute; font-size:clamp(34px,9vw,46px); filter:drop-shadow(0 3px 4px rgba(0,0,0,.3));
     animation:tutTap 1.1s ease-in-out infinite; will-change:left,top; transition:left .3s, top .3s; }
   @keyframes tutTap { 0%,100%{transform:translateY(0) scale(1);} 45%{transform:translateY(6px) scale(.86);} 60%{transform:translateY(0) scale(1);} }
-  #tutTip { position:absolute; left:50%; transform:translateX(-50%); top:var(--tipy,20%);
-    background:#fff; color:#2e5f7a; font-weight:800; font-size:clamp(14px,4vw,18px);
-    padding:9px 20px; border-radius:20px; box-shadow:0 4px 12px rgba(70,100,140,.3); white-space:nowrap; }
+  /* 分步引导 coach */
+  #coach { position:absolute; inset:-6px; display:none; }
+  #coach.show { display:block; }
+  #coachDim { position:absolute; inset:0; z-index:40; background:rgba(20,50,80,.55); border-radius:14px; transition:background .3s; }
+  #coach.pass #coachDim { background:rgba(20,50,80,.1); }
+  #coach.pass { pointer-events:none; }
+  .tile.spot { z-index:50 !important; box-shadow:0 0 0 3px #fff, 0 0 18px 5px rgba(255,255,255,.85), 0 4px 0 #b9c6d9 !important; }
+  #barwrap.spot { position:relative; z-index:50; box-shadow:0 0 0 3px #fff, 0 0 18px 5px rgba(255,255,255,.8), 0 5px 0 #c3cfe0; }
+  #coachBar { position:absolute; left:0; right:0; top:-2px; z-index:56;
+    background:#fff; border-radius:22px; padding:15px 22px 18px; text-align:center;
+    box-shadow:0 3px 24px rgba(40,90,130,.28); animation:barDown .35s cubic-bezier(.34,1.4,.64,1); }
+  #coachDots { display:flex; gap:6px; justify-content:center; margin-bottom:11px; }
+  #coachDots .dot { width:7px; height:7px; border-radius:50%; background:#cfe6f3; transition:all .25s; }
+  #coachDots .dot.on { background:#2f9ad6; width:20px; border-radius:4px; }
+  #coachIcon { font-size:clamp(30px,8vw,40px); line-height:1; margin-bottom:5px; }
+  #coachTip { color:#2e5f7a; font-weight:800; font-size:clamp(15px,4.2vw,19px); line-height:1.4; }
+  #coachSub { color:#7fa3b8; font-weight:700; font-size:clamp(12px,3.4vw,14px); min-height:1.1em; margin-top:3px; }
+  #coachNext { margin-top:13px; border:none; cursor:pointer; font-size:clamp(15px,4.4vw,19px); font-weight:800; color:#fff;
+    padding:11px 42px; border-radius:14px; background:linear-gradient(180deg,#58c6f2,#2f9ad6);
+    box-shadow:0 5px 0 #1f78ab, 0 7px 12px rgba(40,120,170,.35); }
+  #coachNext:active { transform:translateY(3px); box-shadow:0 2px 0 #1f78ab; }
+  #coachNext.wait { display:none; }
+  @keyframes barDown { from{transform:translateY(-30px); opacity:0;} to{transform:translateY(0); opacity:1;} }
 
   /* 弹窗: 白卡 */
   #over { position:absolute; inset:-6px; z-index:60; display:none; align-items:center; justify-content:center; border-radius:12px; background:rgba(220,235,246,.72); backdrop-filter:blur(4px); }
@@ -96,25 +116,35 @@
 <body>
 <div id="game">
   <div id="topbar">
-    <div id="title">🧺 Triple Match</div>
-    <div id="level">LEVEL 1</div>
+    <div id="title">🧺 Üçlü Eşleştir</div>
+    <div id="level">SEVİYE 1</div>
     <button id="restart" title="Exit">✕</button>
   </div>
   <div id="field"></div>
-  <div id="tut"><div id="tutTip">Tap 3 matching items!</div><div id="tutFinger">👆</div></div>
+  <div id="tut"><div id="tutFinger">👆</div></div>
+  <div id="coach">
+    <div id="coachDim"></div>
+    <div id="coachBar">
+      <div id="coachDots"></div>
+      <div id="coachIcon">🧺</div>
+      <div id="coachTip"></div>
+      <div id="coachSub"></div>
+      <button id="coachNext">İleri →</button>
+    </div>
+  </div>
   <div id="barwrap"><div id="bar">
     <div class="slot"></div><div class="slot"></div><div class="slot"></div><div class="slot"></div>
     <div class="slot"></div><div class="slot"></div><div class="slot"></div>
   </div></div>
   <div id="over"><div id="overCard">
     <div class="big" id="overIcon">🎉</div>
-    <h2 id="overTitle">Level 1 complete!</h2>
+    <h2 id="overTitle">Seviye 1 tamamlandı!</h2>
     <div class="sub" id="overSub"></div>
-    <button id="nextBtn">Next Level</button>
+    <button id="nextBtn">Sonraki Seviye</button>
   </div></div>
 </div>
 <div id="toast"></div>
-<div id="rotate"><div class="ph">📱</div><div>Rotate to portrait</div></div>
+<div id="rotate"><div class="ph">📱</div><div>Dikey moda çevirin</div></div>
 
 <script>
 /* ================= App桥 / 存储 / Toast(同底座) ================= */
@@ -122,7 +152,7 @@ const bridge={
   fullScreen(on){ try{ if(window.android&&window.android.setFullScreen) window.android.setFullScreen(!!on); }catch(e){} },
   exit(){ bridge.fullScreen(false);
     try{ if(window.android&&window.android.exitGame){ window.android.exitGame(); return; } }catch(e){}
-    showToast('Exit'); }
+    showToast('Çıkış'); }
 };
 bridge.fullScreen(true);
 const store={
@@ -225,7 +255,7 @@ function isBlocked(t){
 /* ================= 渲染与交互 ================= */
 function newLevel(){
   tiles.forEach(t=>t.el&&t.el.remove()); bar=[]; playing=true;
-  document.getElementById('level').textContent='LEVEL '+level;
+  document.getElementById('level').textContent='SEVİYE '+level;
   document.getElementById('over').classList.remove('show');
   document.getElementById('barwrap').classList.remove('warn');
   const placed=genLevel(level);
@@ -264,6 +294,11 @@ function layoutBar(){
   document.getElementById('barwrap').classList.toggle('warn', bar.length>=BAR_CAP-1);
 }
 function pickTile(t){
+  /* 引导中: 说明步禁点; 实操步只能点目标款 */
+  if(tutorialActive){
+    if(tutStep!==TUT_TOTAL-1) return;
+    if(!t.dead && !t.inbar && !isBlocked(t) && t.kind!==tutKind){ showToast('👆 Parlayan taşa dokun'); return; }
+  }
   if(!playing || t.dead || t.inbar || isBlocked(t)){
     if(playing && !t.dead && !t.inbar){ t.el.classList.add('shake'); sndErr(); setTimeout(()=>t.el.classList.remove('shake'),320); }
     return;
@@ -276,7 +311,7 @@ function pickTile(t){
   bar.splice(insertAt,0,t);
   t.el.classList.add('inbar');
   layoutBar(); refreshBlocked();
-  if(tutorialActive) setTimeout(positionTutorial,60);
+  if(tutorialActive) setTimeout(()=>{ paintOpSpots(); positionFinger(); },60);
   // 三连检测(动画后消除)
   const same=bar.filter(x=>x.kind===t.kind);
   if(same.length>=3){
@@ -304,18 +339,18 @@ function checkEnd(){
 function win(){
   playing=false; sndWin(); vib([50,60,50,60,80]);
   document.getElementById('overIcon').textContent='🎉';
-  document.getElementById('overTitle').textContent=`Level ${level} complete!`;
-  document.getElementById('overSub').textContent='Perfect!';
-  document.getElementById('nextBtn').textContent='Next Level';
+  document.getElementById('overTitle').textContent=`Seviye ${level} tamamlandı!`;
+  document.getElementById('overSub').textContent='Mükemmel!';
+  document.getElementById('nextBtn').textContent='Sonraki Seviye';
   level++; store.set('tm_level',level);
   setTimeout(()=>document.getElementById('over').classList.add('show'),600);
 }
 function lose(){
   playing=false; sndLose(); vib(90);
   document.getElementById('overIcon').textContent='😵';
-  document.getElementById('overTitle').textContent='Rack is full!';
-  document.getElementById('overSub').textContent='Try again, you got this!';
-  document.getElementById('nextBtn').textContent='Try Again';
+  document.getElementById('overTitle').textContent='Tepsi doldu!';
+  document.getElementById('overSub').textContent='Tekrar dene, yaparsın!';
+  document.getElementById('nextBtn').textContent='Tekrar Dene';
   setTimeout(()=>document.getElementById('over').classList.add('show'),700);
 }
 document.getElementById('nextBtn').addEventListener('click',()=>newLevel());
@@ -329,41 +364,87 @@ window.addEventListener('resize',()=>{ // 重排场上与栏内位置
   layoutBar();
 });
 
-/* ===== 新手引导: 手指指向同款可点tile, 首次三连消除毕业 ===== */
-let tutorialActive=false;
-function tutTargetTile(){
-  // 优先: 栏中已有款的可点同款; 否则场上可点数最多的款
-  const clickable=tiles.filter(t=>!t.dead&&!t.inbar&&!isBlocked(t));
-  if(!clickable.length) return null;
-  for(const b of bar){ const t=clickable.find(x=>x.kind===b.kind); if(t) return t; }
-  const cnt={}; clickable.forEach(t=>cnt[t.kind]=(cnt[t.kind]||0)+1);
-  const best=+Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0][0];
-  return clickable.find(t=>t.kind===best);
+/* ===== 分步新手引导(coach + spotlight) ===== */
+let tutorialActive=false, tutStep=-1, tutKind=-1, tutTimer=null;
+const TUT_TOTAL=5;
+function clearSpot(){
+  tiles.forEach(t=>t.el&&t.el.classList.remove('spot'));
+  document.getElementById('barwrap').classList.remove('spot');
 }
-function positionTutorial(){
-  if(!tutorialActive) return;
-  const t=tutTargetTile(); if(!t) return;
+function pickTutKind(){
+  const free=tiles.filter(t=>!t.dead&&!t.inbar&&!isBlocked(t));
+  const cnt={}; free.forEach(t=>cnt[t.kind]=(cnt[t.kind]||0)+1);
+  const e=Object.entries(cnt).filter(([k,c])=>c>=3).sort((a,b)=>b[1]-a[1]);
+  return e.length? +e[0][0] : (free[0]? free[0].kind : -1);
+}
+function paintOpSpots(){
+  clearSpot();
+  tiles.filter(t=>!t.dead&&!t.inbar&&!isBlocked(t)&&t.kind===tutKind).forEach(t=>t.el.classList.add('spot'));
+}
+const TUT=[
+  { icon:'🧺', tip:'Aynı 3 taşı bul, tepsiye topla!', sub:'Hedef: tüm taşları temizle', draw(){} },
+  { icon:'✨', tip:'Aynı 3 taş tepside buluşunca yok olur!', sub:'Parlayan taşlara bak', draw(){
+      tutKind=pickTutKind();
+      tiles.filter(t=>!t.dead&&!t.inbar&&!isBlocked(t)&&t.kind===tutKind)
+        .sort((a,b)=>b.y-a.y).slice(0,3).forEach(t=>t.el.classList.add('spot')); } },
+  { icon:'🔒', tip:'Koyu taşlar kilitli!', sub:'Üstündeki taşlar alınınca açılır', draw(){
+      const b=tiles.filter(t=>!t.dead&&!t.inbar&&isBlocked(t)).sort((a,b)=>b.y-a.y)[0];
+      if(b) b.el.classList.add('spot'); } },
+  { icon:'⚠️', tip:'Tepsi en fazla 7 taş alır!', sub:'Dolarsa kaybedersin — dikkatli seç', draw(){
+      document.getElementById('barwrap').classList.add('spot'); } },
+  { icon:'👆', tip:'Şimdi dene — aynı 3 taşa dokun!', sub:'Parlayan taşları topla', op:true, draw(){
+      tutKind=pickTutKind(); paintOpSpots(); } },
+];
+function positionFinger(){
+  if(tutStep!==TUT_TOTAL-1) return;
+  const t=tiles.find(x=>!x.dead&&!x.inbar&&!isBlocked(x)&&x.kind===tutKind);
+  if(!t) return;
   const g=document.getElementById('game').getBoundingClientRect();
   const r=t.el.getBoundingClientRect();
   const f=document.getElementById('tutFinger');
   f.style.left=(r.left+r.width/2-g.left-13)+'px';
   f.style.top=(r.top+r.height/2-g.top-4)+'px';
 }
-let tutTimer=null;
 function tutLoop(){
   clearInterval(tutTimer);
-  tutTimer=setInterval(()=>{ if(tutorialActive) positionTutorial(); else clearInterval(tutTimer); },600);
+  tutTimer=setInterval(()=>{ if(tutorialActive&&tutStep===TUT_TOTAL-1) positionFinger(); else if(!tutorialActive) clearInterval(tutTimer); },600);
+}
+function setDots(step){
+  const box=document.getElementById('coachDots'); box.innerHTML='';
+  for(let i=0;i<TUT_TOTAL;i++){ const d=document.createElement('div'); d.className='dot'+(i===step?' on':''); box.appendChild(d); }
+}
+function gotoStep(n){
+  tutStep=n; clearSpot();
+  const step=TUT[n], coach=document.getElementById('coach'), next=document.getElementById('coachNext');
+  document.getElementById('coachIcon').textContent=step.icon;
+  document.getElementById('coachTip').textContent=step.tip;
+  document.getElementById('coachSub').textContent=step.sub||'';
+  setDots(n); step.draw();
+  if(step.op){
+    coach.classList.add('pass'); next.classList.add('wait');
+    document.getElementById('tut').classList.add('show');
+    positionFinger(); tutLoop();
+  } else {
+    coach.classList.remove('pass'); next.classList.remove('wait');
+    next.textContent=(n===TUT_TOTAL-2)? 'Anladım! →' : 'İleri →';
+    document.getElementById('tut').classList.remove('show');
+  }
+  sndPick();
 }
 function setupTutorial(){
   if(store.get('tm_tut')) return;
   tutorialActive=true;
-  document.getElementById('tut').classList.add('show');
-  positionTutorial(); tutLoop();
+  document.getElementById('coach').classList.add('show');
+  gotoStep(0);
 }
+document.getElementById('coachNext').addEventListener('click',()=>{ if(tutStep<TUT_TOTAL-1) gotoStep(tutStep+1); });
 function endTutorial(grad){
   document.getElementById('tut').classList.remove('show');
-  if(grad){ tutorialActive=false; store.set('tm_tut','1'); }
+  document.getElementById('coach').classList.remove('show','pass');
+  clearInterval(tutTimer); clearSpot();
+  if(grad){ tutorialActive=false; store.set('tm_tut','1'); showToast('Harika! 🧺'); }
 }
+window.addEventListener('resize',()=>{ if(tutorialActive&&TUT[tutStep]) setTimeout(()=>{ clearSpot(); TUT[tutStep].draw(); positionFinger(); },80); });
 
 level=(+store.get('tm_level'))||1;
 newLevel();
