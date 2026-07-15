@@ -89,10 +89,10 @@
   .sq.spot-line { z-index:50 !important; box-shadow:0 0 0 3px #74c0ff, 0 0 16px 4px rgba(110,190,255,.8); }
   .sq.spot-bad  { z-index:50 !important; box-shadow:0 0 0 3px #ff8080, 0 0 16px 4px rgba(255,110,110,.8); }
   .sq .demo { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-weight:900; color:rgba(255,255,255,.95); text-shadow:0 1px 2px rgba(0,0,0,.2); }
-  /* 底部教学条 */
-  #coachBar { position:absolute; left:0; right:0; bottom:-2px; z-index:46;
+  /* 顶部教学条(压过spotlight, 文字永远可读) */
+  #coachBar { position:absolute; left:0; right:0; top:-2px; z-index:56;
     background:#fff; border-radius:22px; padding:15px 22px 18px; text-align:center;
-    box-shadow:0 -3px 24px rgba(90,60,140,.28); animation:barUp .35s cubic-bezier(.34,1.4,.64,1); }
+    box-shadow:0 3px 24px rgba(90,60,140,.28); animation:barUp .35s cubic-bezier(.34,1.4,.64,1); }
   #coachDots { display:flex; gap:6px; justify-content:center; margin-bottom:11px; }
   #coachDots .dot { width:7px; height:7px; border-radius:50%; background:#e0d0f2; transition:all .25s; }
   #coachDots .dot.on { background:#9257d8; width:20px; border-radius:4px; }
@@ -104,7 +104,7 @@
     box-shadow:0 5px 0 #7440b0, 0 7px 12px rgba(140,90,200,.35); }
   #coachNext:active { transform:translateY(3px); box-shadow:0 2px 0 #7440b0; }
   #coachNext.wait { display:none; }
-  @keyframes barUp { from{transform:translateY(30px); opacity:0;} to{transform:translateY(0); opacity:1;} }
+  @keyframes barUp { from{transform:translateY(-30px); opacity:0;} to{transform:translateY(0); opacity:1;} }
 
   /* 弹窗 */
   #over { position:absolute; inset:-6px; z-index:60; display:none; align-items:center; justify-content:center; border-radius:12px; background:rgba(238,221,251,.8); backdrop-filter:blur(4px); }
@@ -441,9 +441,9 @@ document.getElementById('hintBtn').addEventListener('click',()=>{
 document.getElementById('restart').addEventListener('click',e=>{ e.stopPropagation(); bridge.exit(); });
 
 /* ================= 分步新手引导(状态机 + spotlight) ================= */
-let tutorialActive=false, tutStep=-1, demoC0=0;
-const TUT_TOTAL=5;          /* step 0..4 */
-const GATE=()=>0*N+demoC0;  /* 实操步唯一可点格=第一只猫解位 */
+let tutorialActive=false, tutStep=-1, demoR=0, demoC0=0;
+const TUT_TOTAL=5;              /* step 0..4 */
+const GATE=()=>demoR*N+demoC0;  /* 实操步唯一可点格=中间行的猫解位(避开顶部教学条) */
 
 function clearPaint(){
   cells.forEach(el=>{ el.classList.remove('spot','spot-c','spot-line','spot-bad');
@@ -462,12 +462,12 @@ const TUT=[
     draw(){ const cid=region[GATE()];
       for(let i=0;i<N*N;i++) if(region[i]===cid) paintCell(i,'spot-c', i===GATE()?'😺':''); } },
   { icon:'↔️', tip:'Rule 2 — Only 1 cat per row AND per column.', sub:'Never two cats in the same line',
-    draw(){ for(let c=0;c<N;c++) paintCell(0*N+c,'spot-line', c===demoC0?'😺':'');
-      for(let r=1;r<N;r++) paintCell(r*N+demoC0,'spot-line',''); } },
+    draw(){ for(let c=0;c<N;c++) paintCell(demoR*N+c,'spot-line', c===demoC0?'😺':'');
+      for(let r=0;r<N;r++) if(r!==demoR) paintCell(r*N+demoC0,'spot-line',''); } },
   { icon:'🚫', tip:"Rule 3 — Cats can't touch. Not even corners!", sub:'No cat allowed in any red cell',
     draw(){ paintCell(GATE(),'spot','😺');
       for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){ if(!dr&&!dc) continue;
-        const r=0+dr,c=demoC0+dc; if(r<0||c<0||r>=N||c>=N) continue; paintCell(r*N+c,'spot-bad','✕'); } } },
+        const r=demoR+dr,c=demoC0+dc; if(r<0||c<0||r>=N||c>=N) continue; paintCell(r*N+c,'spot-bad','✕'); } } },
   { icon:'👆', tip:'Tap once = ✕ mark. Tap the SAME cell twice = 😺 cat.', sub:'Try it — place your first cat!', op:true,
     draw(){ paintCell(GATE(),'spot',''); } },
 ];
@@ -508,7 +508,7 @@ function gotoStep(n){
 function setupTutorial(){
   if(store.get('cs_tut')) return;
   const sol=solveCompat(N,region,{}); if(!sol) return;
-  demoC0=sol[0]; tutorialActive=true;
+  demoR=~~(N/2); demoC0=sol[demoR]; tutorialActive=true;   /* 中间行演示, 不被顶部教学条遮挡 */
   document.getElementById('coach').classList.add('show');
   gotoStep(0);
 }
