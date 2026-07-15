@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="description" content="Color Doors — slide blocks out through matching doors!">
 <meta name="theme-color" content="#4a5aa8">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>Renkli Kapılar</title>
+<title>Color Doors</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
   html,body { height:100%; overflow:hidden; }
@@ -117,8 +117,8 @@
 <body>
 <div id="game">
   <div id="topbar">
-    <div id="title">🚪 Renkli Kapılar</div>
-    <div id="level">SEVİYE 1</div>
+    <div id="title">🚪 Color Doors</div>
+    <div id="level">LEVEL 1</div>
     <div id="btns">
       <button class="cbtn" id="resetBtn" title="Reset">↺</button>
       <button class="cbtn" id="exitBtn" title="Exit">✕</button>
@@ -135,18 +135,18 @@
       <div id="coachIcon">🚪</div>
       <div id="coachTip"></div>
       <div id="coachSub"></div>
-      <button id="coachNext">İleri →</button>
+      <button id="coachNext">Next →</button>
     </div>
   </div>
   <div id="over"><div id="overCard">
     <div class="big">🎉</div>
-    <h2 id="overTitle">Seviye 1 tamamlandı!</h2>
-    <div class="sub">Tüm bloklar çıktı!</div>
-    <button id="nextBtn">Sonraki Seviye</button>
+    <h2 id="overTitle">Level 1 complete!</h2>
+    <div class="sub">All blocks out!</div>
+    <button id="nextBtn">Next Level</button>
   </div></div>
 </div>
 <div id="toast"></div>
-<div id="rotate"><div class="ph">📱</div><div>Dikey moda çevirin</div></div>
+<div id="rotate"><div class="ph">📱</div><div>Rotate to portrait</div></div>
 
 <script>
 /* ================= App桥 / 存储 / Toast(同底座) ================= */
@@ -154,7 +154,7 @@ const bridge={
   fullScreen(on){ try{ if(window.android&&window.android.setFullScreen) window.android.setFullScreen(!!on); }catch(e){} },
   exit(){ bridge.fullScreen(false);
     try{ if(window.android&&window.android.exitGame){ window.android.exitGame(); return; } }catch(e){}
-    showToast('Çıkış'); }
+    showToast('Exit'); }
 };
 bridge.fullScreen(true);
 const store={
@@ -261,7 +261,7 @@ function cellPx(){ return boardEl.clientWidth/N; }
 function newLevel(){
   boardEl.innerHTML=''; document.querySelectorAll('.door').forEach(d=>d.remove());
   playing=true;
-  document.getElementById('level').textContent='SEVİYE '+level;
+  document.getElementById('level').textContent='LEVEL '+level;
   document.getElementById('over').classList.remove('show');
   const data=getLevel(level);
   const s=cellPx();
@@ -351,7 +351,7 @@ function exitBlock(b,side){
   if(blocks.every(x=>x.out)){
     playing=false;
     setTimeout(()=>{ sndWin(); vib([50,60,50,60,80]);
-      document.getElementById('overTitle').textContent=`Seviye ${level} tamamlandı!`;
+      document.getElementById('overTitle').textContent=`Level ${level} complete!`;
       document.getElementById('over').classList.add('show');
       level++; store.set('cj_level',level);
     },450);
@@ -431,10 +431,10 @@ function clearSpot(){
 function spotBlock(){ const b=blocks.find(x=>!x.out); if(b) b.el.classList.add('spot'); }
 function spotDoors(){ document.querySelectorAll('.door').forEach(d=>d.classList.add('spot')); }
 const TUT=[
-  { icon:'🚪', tip:'Blokları kapılardan çıkar!', sub:'Hedef: tahtayı tamamen boşalt', draw(){} },
-  { icon:'🧱', tip:'Bloklar parmağınla kayar', sub:'Sürükleyip istediğin yöne it', draw(){ spotBlock(); } },
-  { icon:'🎨', tip:'Blok sadece AYNI renkteki kapıdan çıkar!', sub:'Rengi eşleştir', draw(){ spotBlock(); spotDoors(); } },
-  { icon:'👆', tip:'Şimdi dene — bloğu kapıya sürükle!', sub:'', op:true, draw(){ spotBlock(); spotDoors(); } },
+  { icon:'🚪', tip:'Slide all blocks out through the doors!', sub:'Goal: empty the board', draw(){} },
+  { icon:'🧱', tip:'Blocks slide with your finger', sub:'Drag them in any direction', draw(){ spotBlock(); } },
+  { icon:'🎨', tip:'Blocks only exit through the SAME color door!', sub:'Match the colors', draw(){ spotBlock(); spotDoors(); } },
+  { icon:'👆', tip:'Your turn — drag the block to the door!', sub:'', op:true, draw(){ spotBlock(); spotDoors(); } },
 ];
 function tutLoop(){
   clearInterval(tutTimer);
@@ -470,7 +470,7 @@ function gotoStep(n){
     positionTutorial(); tutLoop();
   } else {
     coach.classList.remove('pass'); next.classList.remove('wait');
-    next.textContent=(n===TUT_TOTAL-2)? 'Anladım! →' : 'İleri →';
+    next.textContent=(n===TUT_TOTAL-2)? 'Got it! →' : 'Next →';
     document.getElementById('tut').classList.remove('show');
   }
   tone(600,0.05,{vol:0.15});
@@ -486,7 +486,7 @@ function endTutorial(grad){
   document.getElementById('tut').classList.remove('show');
   document.getElementById('coach').classList.remove('show','pass');
   clearInterval(tutTimer); clearSpot();
-  if(grad){ tutorialActive=false; store.set('cj_tut','1'); showToast('Harika! 🚪'); }
+  if(grad){ tutorialActive=false; store.set('cj_tut','1'); showToast('Great job! 🚪'); }
 }
 
 level=(+store.get('cj_level'))||1;
