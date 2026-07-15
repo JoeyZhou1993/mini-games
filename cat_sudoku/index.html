@@ -289,26 +289,27 @@ const boardEl=document.getElementById('board');
 let level=1, N=5, region=[], regionColor=[], cells=[], state=[], fish=3, playing=true;
 /* state: 0=空 1=✕ 2=😺 */
 
-/* 相邻区域自动避让: 图着色, 让接壤区域色相尽量拉开 */
+/* 区域上色: 颜色全局唯一(一种颜色=一个区域, 规则才自洽), 且相邻区域色相尽量拉开 */
 function assignColors(N,region){
-  const R=N, P=PALETTE.length;
+  const R=N, P=PALETTE.length;   /* R<=9 < P=10, 颜色够每区唯一 */
   const adj=Array.from({length:R},()=>new Set());
   for(let i=0;i<N*N;i++){
     const r=~~(i/N), c=i%N;
     if(c+1<N && region[i]!==region[i+1]){ adj[region[i]].add(region[i+1]); adj[region[i+1]].add(region[i]); }
     if(r+1<N && region[i]!==region[i+N]){ adj[region[i]].add(region[i+N]); adj[region[i+N]].add(region[i]); }
   }
-  const cidx=Array(R).fill(-1);
+  const cidx=Array(R).fill(-1), taken=Array(P).fill(false);
   const circ=(a,b)=>{ const d=Math.abs(a-b); return Math.min(d,P-d); };   /* 色相环距离(色板已按色相排序) */
   const order=[...Array(R).keys()].sort((x,y)=>adj[y].size-adj[x].size);  /* 邻居最多的先上色 */
   for(const rg of order){
     const used=[...adj[rg]].map(n=>cidx[n]).filter(v=>v>=0);
-    let best=0, bestScore=-1;
+    let best=-1, bestScore=-1;
     for(let p=0;p<P;p++){
-      const minD=used.length? Math.min(...used.map(u=>circ(p,u))) : P;  /* 与已上色邻居的最小色相距离 */
+      if(taken[p]) continue;                                              /* 已用颜色跳过 → 全局唯一 */
+      const minD=used.length? Math.min(...used.map(u=>circ(p,u))) : P;    /* 与已上色邻居的最小色相距离 */
       if(minD>bestScore){ bestScore=minD; best=p; }
     }
-    cidx[rg]=best;
+    cidx[rg]=best; taken[best]=true;
   }
   return cidx.map(p=>PALETTE[p]);
 }
