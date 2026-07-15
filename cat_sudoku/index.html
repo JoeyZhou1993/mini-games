@@ -424,6 +424,7 @@ function checkWin(){
   document.getElementById('overTitle').textContent=`Level ${level} complete!`;
   document.getElementById('overSub').textContent='All cats found! 🐾';
   document.getElementById('nextBtn').textContent='Next Level';
+  document.getElementById('exitBtn').style.display='none';    /* 胜利弹窗不给退出 */
   level++; store.set('cs_level',level);
   if(hints<HINT_MAX){ hints++; store.set('cs_hints',hints); renderHints(); }   /* 过关回补1次 */
   setTimeout(()=>document.getElementById('over').classList.add('show'),900);
@@ -433,6 +434,7 @@ function lose(){
   document.getElementById('overTitle').textContent='Out of fish! 🐟';
   document.getElementById('overSub').textContent="Don't worry — try again!";
   document.getElementById('nextBtn').textContent='Try Again';
+  document.getElementById('exitBtn').style.display='';        /* 失败弹窗才有退出 */
   document.querySelector('#overCard .bigcat').textContent='🙀';
   setTimeout(()=>document.getElementById('over').classList.add('show'),600);
 }
