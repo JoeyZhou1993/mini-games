@@ -438,6 +438,7 @@ function lose(){
 }
 document.getElementById('exitBtn').addEventListener('click',()=>{ bridge.exit(); });
 document.getElementById('nextBtn').addEventListener('click',()=>{
+  bridge.stat('h5_click',{game_name:'findcat', page_name:'restart'});
   document.querySelector('#overCard .bigcat').textContent='😻';
   newLevel();
 });
