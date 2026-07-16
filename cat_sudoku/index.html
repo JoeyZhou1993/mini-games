@@ -43,10 +43,12 @@
   #board { display:grid; aspect-ratio:1; gap:4px; position:relative; }
   .sq { border-radius:14%; display:flex; align-items:center; justify-content:center; cursor:pointer;
     font-weight:900; position:relative;
+    min-width:0; min-height:0; overflow:visible;                       /* 禁止内容撑开grid轨道 */
     box-shadow:inset 0 -3px 0 rgba(0,0,0,.08), inset 0 2px 0 rgba(255,255,255,.5);
     transition:filter .12s; }
   .sq:active { filter:brightness(1.08); }
-  .sq .mark { color:rgba(255,255,255,.95); font-weight:900; text-shadow:0 1px 2px rgba(0,0,0,.15); }
+  .sq .mark { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    color:rgba(255,255,255,.95); font-weight:900; text-shadow:0 1px 2px rgba(0,0,0,.15); }   /* 绝对定位: 猫emoji再大也不影响格子尺寸 */
   .sq.cat { box-shadow:inset 0 0 0 3px #ffd54d, inset 0 0 12px rgba(255,200,60,.7), inset 0 -3px 0 rgba(0,0,0,.08); z-index:2; }   /* 内边框+内发光, 不撑大UI */
   .sq.err { animation:errFlash .4s ease; }
   @keyframes errFlash { 0%,100%{filter:none;} 30%{filter:brightness(.75) saturate(2) hue-rotate(-30deg); transform:translateX(-3px);} 60%{transform:translateX(3px);} }
@@ -364,7 +366,7 @@ function newLevel(){
   for(let i=0;i<N*N;i++){
     const d=document.createElement('div'); d.className='sq';
     d.style.background=regionColor[region[i]];
-    d.style.fontSize=`calc(var(--gw)/${N+3})`;
+    d.style.fontSize=`calc((var(--gw) - 16px - ${(N-1)*4}px) / ${N} * 0.62)`;   /* 按真实格宽62%, 大盘不溢出 */
     const m=document.createElement('span'); m.className='mark'; d.appendChild(m);
     d.addEventListener('click',()=>tapCell(i));
     boardEl.appendChild(d); cells.push(d);
