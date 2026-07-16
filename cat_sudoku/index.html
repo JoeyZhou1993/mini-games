@@ -43,7 +43,7 @@
   #board { display:grid; aspect-ratio:1; gap:4px; position:relative; }
   .sq { border-radius:14%; display:flex; align-items:center; justify-content:center; cursor:pointer;
     font-weight:900; position:relative;
-    min-width:0; min-height:0; overflow:visible;                       /* 禁止内容撑开grid轨道 */
+    min-width:0; min-height:0; overflow:visible; contain:layout;       /* 内容/点击效果一律不影响格子尺寸 */
     box-shadow:inset 0 -3px 0 rgba(0,0,0,.08), inset 0 2px 0 rgba(255,255,255,.5);
     transition:filter .12s; }
   .sq:active { filter:brightness(1.08); }
@@ -51,7 +51,7 @@
     color:rgba(255,255,255,.95); font-weight:900; text-shadow:0 1px 2px rgba(0,0,0,.15); }   /* 绝对定位: 猫emoji再大也不影响格子尺寸 */
   .sq.cat { box-shadow:inset 0 0 0 3px #ffd54d, inset 0 0 12px rgba(255,200,60,.7), inset 0 -3px 0 rgba(0,0,0,.08); z-index:2; }   /* 内边框+内发光, 不撑大UI */
   .sq.err { animation:errFlash .4s ease; }
-  @keyframes errFlash { 0%,100%{filter:none;} 30%{filter:brightness(.75) saturate(2) hue-rotate(-30deg); transform:translateX(-3px);} 60%{transform:translateX(3px);} }
+  @keyframes errFlash { 0%,100%{filter:none;} 30%,60%{filter:brightness(.7) saturate(2.2) hue-rotate(-30deg);} 45%{filter:brightness(1.1) saturate(2.2) hue-rotate(-30deg);} }   /* 纯色闪, 无位移 */
 
   /* 工具 */
   #tools { display:flex; gap:8px; margin-top:12px; }
