@@ -187,15 +187,29 @@
 
 <script>
 /* ================= App桥 / 存储 / Toast(底座) ================= */
+const SID=Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);   // 本次会话唯一ID, 注入所有埋点
 const bridge={
   fullScreen(on){ try{ if(window.android&&window.android.setFullScreen) window.android.setFullScreen(!!on); }catch(e){} },
-  exit(){ bridge.fullScreen(false);
+  exit(){ reportExit(); bridge.fullScreen(false);
     try{ if(window.android&&window.android.exitGame){ window.android.exitGame(); return; } }catch(e){}
     showToast('Çıkış'); },
-  stat(event,params){ try{ if(window.android&&window.android.statistics) window.android.statistics(JSON.stringify({event,params:params||{}})); }catch(e){} }
+  stat(event,params){ try{ if(window.android&&window.android.statistics) window.android.statistics(JSON.stringify({event,params:Object.assign({session_id:SID},params||{})})); }catch(e){} }
 };
 bridge.fullScreen(true);
-bridge.stat('pv_h5',{page_name:'findcat'});   // 页面PV
+bridge.stat('pv_h5',{game_name:'findcat', page_name:'findcat'});   // 页面PV
+/* 退出上报: 退出按钮走bridge.exit; pagehide/切后台兜底
+   duration = 前台活跃秒数(visible时段累加, 后台时间不计) */
+let exitReported=false, activeMs=0, visSince=Date.now();
+function activeSec(){ return Math.round((activeMs + (document.visibilityState==='visible'? Date.now()-visSince : 0))/1000); }
+function reportExit(){
+  if(exitReported) return; exitReported=true;
+  bridge.stat('h5_click',{game_name:'findcat', page_name:'exit', duration:activeSec()});
+}
+window.addEventListener('pagehide',reportExit);
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='hidden'){ activeMs+=Date.now()-visSince; reportExit(); }
+  else { visSince=Date.now(); exitReported=false; }   // 切回继续玩: 重新计时并允许再报, SQL取max
+});
 const store={
   get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
   set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
@@ -446,7 +460,6 @@ function lose(){
 }
 document.getElementById('exitBtn').addEventListener('click',()=>{ bridge.exit(); });
 document.getElementById('nextBtn').addEventListener('click',()=>{
-  bridge.stat('h5_click',{game_name:'findcat', page_name:'restart'});
   document.querySelector('#overCard .bigcat').textContent='😻';
   newLevel();
 });
