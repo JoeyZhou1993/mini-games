@@ -71,6 +71,10 @@
     box-shadow:0 5px 0 #a52c1e, 0 7px 12px rgba(200,60,40,.35); }
   #coachNext:active { transform:translateY(3px); box-shadow:0 2px 0 #a52c1e; }
   #coachNext.wait { display:none; }
+  /* 实操步: 教学卡收成一行小条, 不挡场地 */
+  #coach.pass #coachIcon, #coach.pass #coachDots, #coach.pass #coachSub { display:none; }
+  #coach.pass #coachBar { padding:9px 16px 11px; }
+  #coach.pass #coachTip { font-size:clamp(13px,3.6vw,15px); }
   @keyframes barDown { from{transform:translateY(-30px); opacity:0;} to{transform:translateY(0); opacity:1;} }
 
   /* 弹窗 */
@@ -200,7 +204,17 @@ function noise(dur,vol,delay=0){ try{
 }catch(e){} }
 const SC=[523.25,659.25,783.99,1046.5,1318.5];
 const sndFire=()=>{ tone(120,0.25,{type:'triangle',vol:0.4,slide:50}); noise(0.16,0.3); };
-const sndClank=v=>{ tone(700+Math.random()*300,0.07,{type:'square',vol:Math.min(0.22,v*0.05)}); };
+let lastClank=0, clankIdx=0;
+const CLANK_SC=[523.25,587.33,659.25,783.99,880];  /* 五声音阶: 连续碰撞=轻快琶音, 与胜利音同族 */
+const sndClank=v=>{
+  const now=Date.now();
+  if(now-lastClank<90) return;
+  lastClank=now;
+  const vol=Math.min(0.2, 0.06+v*0.013);
+  const f=CLANK_SC[clankIdx++ % CLANK_SC.length];
+  tone(f, 0.06, {type:'sine', vol, at:0.004});
+  tone(f*2, 0.04, {vol:vol*0.25});
+};
 const sndPoof=()=>{ tone(880,0.12,{vol:0.25,slide:220}); noise(0.08,0.15); };
 const sndWin=()=>{ [0,1,2,3,4].forEach(i=>{ tone(SC[i],0.26,{type:'triangle',vol:0.35,delay:i*0.1}); }); tone(2093,0.5,{vol:0.13,delay:0.55}); };
 const sndLose=()=>{ tone(330,0.35,{type:'triangle',vol:0.28}); tone(247,0.5,{type:'triangle',vol:0.24,delay:0.22}); };
@@ -217,17 +231,18 @@ let aiming=false, aimX=0, aimY=0;
 const CANNON={x:0,y:0,ang:-Math.PI/2,len:0};
 
 function levelDef(L){
+  /* 难度=组数x分散度: 组间距>冲击波半径, 一炮只能炸一组; 弹药余量随关递减 */
   const seq=[
-    {t:'pyr',n:3,balls:4},
-    {t:'wall',c:3,r:3,balls:5},
-    {t:'towers',h:4,balls:5},
-    {t:'pyr',n:4,balls:5},
-    {t:'wall',c:4,r:3,balls:6},
-    {t:'pyr',n:5,balls:6},
-    {t:'wall',c:5,r:4,balls:7},
-    {t:'towers',h:6,balls:6},
-    {t:'pyr',n:6,balls:7},
-    {t:'wall',c:6,r:4,balls:8},
+    {t:'pyr',n:3,at:[0],balls:4},
+    {t:'pyr',n:4,at:[0],balls:3},
+    {t:'wall',c:3,r:3,at:[0],balls:3},
+    {t:'towers',h:4,at:[0],balls:5},
+    {t:'pyr',n:5,at:[0],balls:4},
+    {t:'pyr',n:3,at:[-0.21,0.21],balls:7},
+    {t:'wall',c:5,r:3,at:[0],balls:5},
+    {t:'wall',c:2,r:4,at:[-0.26,0,0.26],balls:6},
+    {t:'pyr',n:4,at:[-0.22,0.22],balls:11},
+    {t:'wall',c:2,r:3,at:[-0.3,-0.1,0.1,0.3],balls:8},
   ];
   return seq[(L-1)%seq.length];
 }
@@ -250,33 +265,37 @@ function buildLevel(){
   cans=[]; liveBall=null; particles=[]; floats=[];
   ballsLeft=def.balls; playing=true; settleTimer=0; overShown=false; score= level===1?0:score;
   const sandY=H*0.86;
-  const cw0=44*U, gap0=2*U;
-  const stackW = def.t==='pyr'? def.n*(cw0+gap0) : def.t==='wall'? def.c*(cw0+gap0) : cw0*1.6*2+cw0;
-  const pedW=stackW+14*U, pedH=H*0.05, pedTop=H*0.60;   /* 台面贴合堆宽: 撞翻即滚落 */
-  window.__pedW=pedW;
-  // 静态: 沙地 + 底座
-  Composite.add(engine.world,[
-    Bodies.rectangle(W/2,H*1.04,W*2.4,H*0.14,{isStatic:true,label:'sand',friction:0.8}),   /* 物理沙面在0.97H, 低于炮口, 炮弹才能飞出 */
-    Bodies.rectangle(W/2,pedTop+pedH/2,pedW,pedH,{isStatic:true,label:'ped',friction:0.25}),
-  ]);
-  // 罐子堆
   const cw=44*U, ch=54*U, gap=2*U;
-  const mk=(x,y)=>{
+  const pedH=H*0.05, pedTop=H*0.60, baseY=pedTop-ch/2-1;
+  // 先规划所有罐坐标(支持多组分散), 再按范围定台宽
+  const plans=[];
+  const addGroup=(cx)=>{
+    if(def.t==='pyr'){
+      for(let row=0;row<def.n;row++){ const cnt=def.n-row;
+        for(let i=0;i<cnt;i++) plans.push([cx+(i-(cnt-1)/2)*(cw+gap), baseY-row*(ch+gap)]); }
+    } else if(def.t==='wall'){
+      for(let row=0;row<def.r;row++)
+        for(let i=0;i<def.c;i++) plans.push([cx+(i-(def.c-1)/2)*(cw+gap), baseY-row*(ch+gap)]);
+    } else if(def.t==='towers'){
+      for(const off of [-1,1])
+        for(let row=0;row<def.h;row++) plans.push([cx+off*cw*1.6, baseY-row*(ch+gap)]);
+    }
+  };
+  const groupPeds=[];
+  for(const off of def.at){
+    const start=plans.length;
+    addGroup(W/2+off*W);
+    const gxs=plans.slice(start).map(pp=>pp[0]);
+    groupPeds.push({x:(Math.min(...gxs)+Math.max(...gxs))/2, w:Math.max(...gxs)-Math.min(...gxs)+cw+14*U});
+  }
+  window.__peds=groupPeds;
+  // 静态: 沙地 + 每组独立台面(组间留空: 罐被震出组即坠落, 这是分散关卡的掉落区)
+  Composite.add(engine.world, Bodies.rectangle(W/2,H*1.04,W*2.4,H*0.14,{isStatic:true,label:'sand',friction:0.8}));
+  for(const gp of groupPeds)
+    Composite.add(engine.world, Bodies.rectangle(gp.x,pedTop+pedH/2,gp.w,pedH,{isStatic:true,label:'ped',friction:0.25,collisionFilter:{category:0x0002}}));
+  for(const [x,y] of plans){
     const b=Bodies.rectangle(x,y,cw,ch,{label:'can',friction:0.18,restitution:0.12,density:0.0015});
     cans.push(b); Composite.add(engine.world,b);
-  };
-  const baseY=pedTop-ch/2-1;
-  if(def.t==='pyr'){
-    for(let row=0;row<def.n;row++){
-      const cnt=def.n-row;
-      for(let i=0;i<cnt;i++) mk(W/2+(i-(cnt-1)/2)*(cw+gap), baseY-row*(ch+gap));
-    }
-  } else if(def.t==='wall'){
-    for(let row=0;row<def.r;row++)
-      for(let i=0;i<def.c;i++) mk(W/2+(i-(def.c-1)/2)*(cw+gap), baseY-row*(ch+gap));
-  } else if(def.t==='towers'){
-    for(const off of [-1,1])
-      for(let row=0;row<def.h;row++) mk(W/2+off*cw*1.6, baseY-row*(ch+gap));
   }
   // 炮台
   CANNON.x=W/2; CANNON.y=H*0.955; CANNON.len=46*U; CANNON.ang=-Math.PI/2;
@@ -288,13 +307,13 @@ function buildLevel(){
       const v=Math.max(p.bodyA.speed,p.bodyB.speed);
       if(v>3) sndClank(v);
       if(ball.speed<6) continue;
-      const R0=132*U;
+      const R0=(108-Math.min((level-1)*3,26))*U;   /* 冲击半径随关衰减 108→82 */
       for(const c of cans){
         const dx=c.position.x-ball.position.x, dy=c.position.y-ball.position.y;
         const d=Math.hypot(dx,dy)||1;
         if(d<R0){
           /* collisionStart里applyForce会被同tick的clearForces吞掉, 必须直接改速度 */
-          const imp=9*U*(1-d/R0)*Math.min(1,ball.speed/30);
+          const imp=(6.2-Math.min((level-1)*0.15,1.5))*U*(1-d/R0)*Math.min(1,ball.speed/30);   /* 冲量随关衰减 6.2→4.7 */
           Body.setVelocity(c,{x:c.velocity.x+dx/d*imp, y:c.velocity.y+dy/d*imp-imp*0.4});
         }
       }
@@ -316,9 +335,9 @@ function renderHud(){
 function fire(){
   if(!playing||ballsLeft<=0||liveBall) return false;
   ballsLeft--; renderHud();
-  const sp=36*U;                                   /* 实测matter重力≈2.5px/tick², 36初速够打到堆顶 */
+  const sp=36*U;
   const b=Bodies.circle(CANNON.x+Math.cos(CANNON.ang)*CANNON.len, CANNON.y+Math.sin(CANNON.ang)*CANNON.len,
-    13*U,{label:'ball',density:0.05,restitution:0.25,friction:0.3});
+    13*U,{label:'ball',density:0.032,restitution:0.25,friction:0.3,collisionFilter:{mask:0xFFFD}});   /* 不与台面碰撞 */
   Body.setVelocity(b,{x:Math.cos(CANNON.ang)*sp, y:Math.sin(CANNON.ang)*sp});
   Composite.add(engine.world,b);
   liveBall=b; ballDeadTimer=0;
@@ -369,7 +388,7 @@ function physicsStep(){
 
 /* ================= 渲染 ================= */
 function draw(){
-  const sandY=H*0.86, seaY=H*0.40, pedW=window.__pedW||W*0.4, pedH=H*0.05, pedTop=H*0.60;
+  const sandY=H*0.86, seaY=H*0.40, pedH=H*0.05, pedTop=H*0.60;
   // 天空/海/沙
   let g=ctx.createLinearGradient(0,0,0,seaY); g.addColorStop(0,'#7ec8f0'); g.addColorStop(1,'#bfe6fa');
   ctx.fillStyle=g; ctx.fillRect(0,0,W,seaY);
@@ -378,11 +397,13 @@ function draw(){
   g=ctx.createLinearGradient(0,seaY+H*0.06,0,H); g.addColorStop(0,'#f4dfa8'); g.addColorStop(1,'#e6c988');
   ctx.fillStyle=g; ctx.fillRect(0,seaY+H*0.06,W,H);
   ctx.font=`${28*U}px serif`; ctx.fillText('🌴',W*0.06,seaY-4*U); ctx.fillText('⛱️',W*0.82,seaY-2*U);
-  // 底座
-  ctx.fillStyle='#9a6a3a'; ctx.beginPath();
-  ctx.roundRect(W/2-pedW/2,pedTop,pedW,pedH,6*U); ctx.fill();
-  ctx.fillStyle='#7a4f26'; ctx.fillRect(W/2-pedW/2,pedTop+pedH-3*U,pedW,3*U);
-  ctx.fillStyle='#b5854f'; ctx.fillRect(W/2-8*U,pedTop+pedH,16*U,sandY-pedTop-pedH);
+  // 底座(每组一个)
+  for(const gp of (window.__peds||[{x:W/2,w:W*0.4}])){
+    ctx.fillStyle='#9a6a3a'; ctx.beginPath();
+    ctx.roundRect(gp.x-gp.w/2,pedTop,gp.w,pedH,6*U); ctx.fill();
+    ctx.fillStyle='#7a4f26'; ctx.fillRect(gp.x-gp.w/2,pedTop+pedH-3*U,gp.w,3*U);
+    ctx.fillStyle='#b5854f'; ctx.fillRect(gp.x-8*U,pedTop+pedH,16*U,sandY-pedTop-pedH);
+  }
   // 罐子
   for(const c of cans){
     ctx.save(); ctx.translate(c.position.x,c.position.y); ctx.rotate(c.angle);
@@ -399,10 +420,10 @@ function draw(){
     let px=CANNON.x+Math.cos(CANNON.ang)*CANNON.len, py=CANNON.y+Math.sin(CANNON.ang)*CANNON.len;
     let vx=Math.cos(CANNON.ang)*36*U, vy=Math.sin(CANNON.ang)*36*U;
     ctx.fillStyle='rgba(255,255,255,.75)';
-    for(let i=0;i<14;i++){
-      px+=vx*1.2; py+=vy*1.2; vy+=2.5*1.2;
+    for(let i=0;i<48;i++){                          /* 实测标定: v*=0.99, vy+=0.278/tick, 与物理精确一致 */
+      vx*=0.99; vy=vy*0.99+0.278*U; px+=vx; py+=vy;
       if(py>H) break;
-      ctx.beginPath(); ctx.arc(px,py,3.4*U,0,7); ctx.fill();
+      if(i%3===0){ ctx.beginPath(); ctx.arc(px,py,3.4*U,0,7); ctx.fill(); }
     }
   }
   // 炮弹
@@ -511,8 +532,11 @@ function positionFinger(){
   const f=document.getElementById('tutFinger');
   f.style.setProperty('--fx',(r.left-g.left+CANNON.x*scale-14)+'px');
   f.style.setProperty('--fy',(r.top-g.top+CANNON.y*scale-30)+'px');
-  f.style.setProperty('--tx',(r.left-g.left+W*0.68*scale)+'px');
-  f.style.setProperty('--ty',(r.top-g.top+H*0.34*scale)+'px');
+  /* 终点=罐堆质心: 跟着拖就是正确瞄准, 松手必中 */
+  const cx=cans.length? cans.reduce((a,c)=>a+c.position.x,0)/cans.length : W/2;
+  const cy=cans.length? cans.reduce((a,c)=>a+c.position.y,0)/cans.length : H*0.45;
+  f.style.setProperty('--tx',(r.left-g.left+cx*scale-14)+'px');
+  f.style.setProperty('--ty',(r.top-g.top+cy*scale-10)+'px');
 }
 function gotoStep(n){
   tutStep=n;
@@ -525,6 +549,8 @@ function gotoStep(n){
     coach.classList.add('pass'); next.classList.add('wait');
     document.getElementById('tut').classList.add('show');
     positionFinger();
+    clearInterval(window.__tutTimer);
+    window.__tutTimer=setInterval(()=>{ if(tutorialActive) positionFinger(); else clearInterval(window.__tutTimer); },800);
   } else {
     coach.classList.remove('pass'); next.classList.remove('wait');
     next.textContent=(n===TUT_TOTAL-2)? 'Got it! →' : 'Next →';
@@ -542,6 +568,7 @@ document.getElementById('coachNext').addEventListener('click',()=>{ if(tutStep<T
 function endTutorial(grad){
   document.getElementById('tut').classList.remove('show');
   document.getElementById('coach').classList.remove('show','pass');
+  clearInterval(window.__tutTimer);
   if(grad){ tutorialActive=false; store.set('sf_tut','1'); showToast('Great shot! 💥'); }
 }
 
