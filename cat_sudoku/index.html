@@ -111,6 +111,10 @@
     box-shadow:0 5px 0 #7440b0, 0 7px 12px rgba(140,90,200,.35); }
   #coachNext:active { transform:translateY(3px); box-shadow:0 2px 0 #7440b0; }
   #coachNext.wait { display:none; }
+  /* 实操步: 教学卡收成一行小条, 不挡场地 */
+  #coach.pass #coachIcon, #coach.pass #coachDots, #coach.pass #coachSub { display:none; }
+  #coach.pass #coachBar { padding:9px 16px 11px; }
+  #coach.pass #coachTip { font-size:clamp(13px,3.6vw,15px); }
   @keyframes barUp { from{transform:translateY(-30px); opacity:0;} to{transform:translateY(0); opacity:1;} }
 
   /* 弹窗 */
