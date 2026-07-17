@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="description" content="Smash Fest 3D — knock all the cans off the stand!">
+<meta name="theme-color" content="#7ec8f0">
+<title>Smash Fest 3D</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+  html,body { width:100%; height:100%; overflow:hidden; background:#0e1420; font-family:-apple-system,"PingFang SC","Helvetica Neue",Arial,sans-serif; }
+  #stage { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); overflow:hidden; border-radius:14px; background:#7ec8f0; }
+  canvas { display:block; }
+  .ui { position:absolute; inset:0; pointer-events:none; }
+
+  #topbar { position:absolute; top:8px; left:10px; right:10px; display:flex; align-items:center; justify-content:space-between; }
+  #title { color:#fff; font-weight:800; font-size:16px; text-shadow:0 2px 4px rgba(0,0,0,.3); }
+  #level { color:#fff; font-weight:800; font-size:13px;
+    background:linear-gradient(180deg,#f76a5a,#d8402f); padding:6px 14px; border-radius:16px;
+    box-shadow:0 2px 0 #a52c1e, 0 3px 6px rgba(200,60,40,.35); }
+  #exitTop { border:none; cursor:pointer; width:34px; height:34px; border-radius:50%; pointer-events:auto;
+    background:#fff; color:#c06a4a; font-size:17px; font-weight:800; line-height:1;
+    box-shadow:0 2px 0 rgba(0,0,0,.15); }
+
+  #status { position:absolute; top:50px; left:10px; right:10px; display:flex; justify-content:space-between; }
+  .pill { background:rgba(255,255,255,.92); border-radius:14px; padding:5px 13px; font-weight:800; color:#8a4a1f;
+    font-size:14px; box-shadow:0 2px 6px rgba(120,70,30,.25); }
+  #balls .b.used { filter:grayscale(1) opacity(.3); }
+
+  /* coach 引导 */
+  #tut { position:absolute; inset:0; z-index:52; pointer-events:none; display:none; }
+  #tut.show { display:block; }
+  #tutFinger { position:absolute; font-size:40px; filter:drop-shadow(0 3px 4px rgba(0,0,0,.4));
+    animation:tutDrag 1.6s ease-in-out infinite; will-change:left,top; }
+  @keyframes tutDrag {
+    0%{ left:var(--fx); top:var(--fy); transform:scale(1); opacity:0; }
+    12%{ opacity:1; }
+    25%{ left:var(--fx); top:var(--fy); transform:scale(.84); }
+    70%{ left:var(--tx); top:var(--ty); transform:scale(.84); opacity:1; }
+    85%{ left:var(--tx); top:var(--ty); transform:scale(1); }
+    100%{ left:var(--tx); top:var(--ty); transform:scale(1); opacity:0; }
+  }
+  #coach { position:absolute; inset:0; display:none; z-index:54; }
+  #coach.show { display:block; }
+  #coachDim { position:absolute; inset:0; z-index:40; background:rgba(60,40,20,.55); transition:background .3s; }
+  #coach.pass #coachDim { background:rgba(60,40,20,.05); }
+  #coach.pass { pointer-events:none; }
+  #coachBar { position:absolute; left:6px; right:6px; top:6px; z-index:56;
+    background:#fff; border-radius:18px; padding:14px 20px 16px; text-align:center;
+    box-shadow:0 3px 20px rgba(120,70,30,.3); pointer-events:auto; }
+  #coachDots { display:flex; gap:6px; justify-content:center; margin-bottom:10px; }
+  #coachDots .dot { width:7px; height:7px; border-radius:50%; background:#f2ddc0; transition:all .25s; }
+  #coachDots .dot.on { background:#d8402f; width:20px; border-radius:4px; }
+  #coachIcon { font-size:32px; line-height:1; margin-bottom:5px; }
+  #coachTip { color:#8a4a1f; font-weight:800; font-size:16px; line-height:1.4; }
+  #coachSub { color:#c09a6e; font-weight:700; font-size:12px; min-height:1.1em; margin-top:3px; }
+  #coachNext { margin-top:11px; border:none; cursor:pointer; font-size:16px; font-weight:800; color:#fff;
+    padding:10px 40px; border-radius:12px; background:linear-gradient(180deg,#f76a5a,#d8402f);
+    box-shadow:0 4px 0 #a52c1e; }
+  #coachNext:active { transform:translateY(3px); box-shadow:0 1px 0 #a52c1e; }
+  #coachNext.wait { display:none; }
+  #coach.pass #coachIcon, #coach.pass #coachDots, #coach.pass #coachSub { display:none; }
+  #coach.pass #coachBar { padding:8px 14px 10px; }
+  #coach.pass #coachTip { font-size:13px; }
+
+  /* 结算 */
+  #over { position:absolute; inset:0; z-index:60; display:none; align-items:center; justify-content:center; background:rgba(250,235,205,.75); backdrop-filter:blur(4px); pointer-events:auto; }
+  #over.show { display:flex; animation:fadeIn .3s ease; }
+  @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
+  #overCard { text-align:center; color:#8a4a1f; padding:26px 34px; background:#fff; border-radius:20px;
+    box-shadow:0 10px 30px rgba(120,70,30,.3); animation:cardIn .38s cubic-bezier(.34,1.4,.64,1); }
+  @keyframes cardIn { from{transform:scale(.72); opacity:0;} to{transform:scale(1); opacity:1;} }
+  #overCard .big { font-size:56px; }
+  #overCard h2 { font-size:24px; margin:8px 0 6px; }
+  #overCard .sub { color:#c09a6e; font-size:14px; margin-bottom:20px; }
+  #overBtns { display:flex; gap:10px; justify-content:center; }
+  #nextBtn { border:none; cursor:pointer; font-size:17px; font-weight:800; color:#fff; padding:12px 30px; border-radius:13px;
+    background:linear-gradient(180deg,#ffb340,#ff8c1a); box-shadow:0 4px 0 #c96a08; }
+  #nextBtn:active { transform:translateY(3px); box-shadow:0 1px 0 #c96a08; }
+  #exitBtn { border:none; cursor:pointer; font-size:14px; font-weight:800; color:#c06a4a; padding:12px 20px; border-radius:13px;
+    background:#fbeedd; box-shadow:0 4px 0 #e0c8a8; }
+  #exitBtn:active { transform:translateY(3px); box-shadow:0 1px 0 #e0c8a8; }
+
+  #toast { position:absolute; left:50%; bottom:12%; transform:translateX(-50%) translateY(16px);
+    background:rgba(138,74,31,.94); color:#fff; font-weight:700; font-size:14px;
+    padding:9px 22px; border-radius:20px; opacity:0; pointer-events:none; z-index:100; transition:all .25s ease; }
+  #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .sparkle { position:absolute; font-size:18px; pointer-events:none; z-index:30; animation:spark .6s forwards; }
+  @keyframes spark { 0%{transform:translate(0,0) scale(1); opacity:1} 100%{transform:translate(var(--dx),var(--dy)) scale(.3); opacity:0} }
+  .scorePop { position:absolute; font-weight:800; color:#fff; font-size:17px; text-shadow:0 2px 3px rgba(0,0,0,.4);
+    pointer-events:none; z-index:30; animation:rise 1s forwards; }
+  @keyframes rise { from{transform:translateY(0); opacity:1;} to{transform:translateY(-46px); opacity:0;} }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="ui">
+    <div id="topbar">
+      <div id="title">💥 Smash Fest 3D</div>
+      <div id="level">LEVEL 1</div>
+      <button id="exitTop">✕</button>
+    </div>
+    <div id="status">
+      <div class="pill" id="score">⭐ 0</div>
+      <div class="pill" id="balls"></div>
+    </div>
+    <div id="tut"><div id="tutFinger">👆</div></div>
+    <div id="coach">
+      <div id="coachDim"></div>
+      <div id="coachBar">
+        <div id="coachDots"></div>
+        <div id="coachIcon">💥</div>
+        <div id="coachTip"></div>
+        <div id="coachSub"></div>
+        <button id="coachNext">Next →</button>
+      </div>
+    </div>
+    <div id="over"><div id="overCard">
+      <div class="big" id="overIcon">🎉</div>
+      <h2 id="overTitle">Level 1 complete!</h2>
+      <div class="sub" id="overSub"></div>
+      <div id="overBtns">
+        <button id="nextBtn">Next Level</button>
+        <button id="exitBtn">Exit</button>
+      </div>
+    </div></div>
+    <div id="toast"></div>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+  "cannon-es": "https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import * as CANNON from 'cannon-es';
+
+/* ================= App桥 / 存储 / Toast ================= */
+const bridge={
+  fullScreen(on){ try{ if(window.android&&window.android.setFullScreen) window.android.setFullScreen(!!on); }catch(e){} },
+  exit(){ bridge.fullScreen(false);
+    try{ if(window.android&&window.android.exitGame){ window.android.exitGame(); return; } }catch(e){}
+    showToast('Exit'); },
+  stat(event,params){ try{ if(window.android&&window.android.statistics) window.android.statistics(JSON.stringify({event,params:params||{}})); }catch(e){} }
+};
+bridge.fullScreen(true);
+bridge.stat('pv_h5',{page_name:'smashfest3d'});
+const store={
+  get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+};
+let toastTimer=null;
+function showToast(txt){
+  const t=document.getElementById('toast');
+  t.textContent=txt; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),1600);
+}
+if(location.search.includes('reset')){
+  try{ localStorage.removeItem('s3_level'); localStorage.removeItem('s3_tut'); }catch(e){}
+  history.replaceState(null,'',location.pathname);
+}
+
+/* ================= 音效(同2D底座) ================= */
+let AC=null, MASTER=null;
+function tone(f,dur,opt={}){ try{
+  const {type='sine',vol=0.22,at=0.008,slide=null,delay=0}=opt;
+  AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+  if(!MASTER){ const c=AC.createDynamicsCompressor(); c.threshold.value=-18; c.ratio.value=6; c.connect(AC.destination);
+    MASTER=AC.createGain(); MASTER.gain.value=1.7; MASTER.connect(c); }
+  if(AC.state==='suspended') AC.resume();
+  const t0=AC.currentTime+delay;
+  const o=AC.createOscillator(), g=AC.createGain();
+  o.type=type; o.frequency.setValueAtTime(f,t0);
+  if(slide) o.frequency.exponentialRampToValueAtTime(slide,t0+dur);
+  g.gain.setValueAtTime(0,t0); g.gain.linearRampToValueAtTime(vol,t0+at);
+  g.gain.exponentialRampToValueAtTime(0.001,t0+dur);
+  o.connect(g); g.connect(MASTER); o.start(t0); o.stop(t0+dur+0.03);
+}catch(e){} }
+function noise(dur,vol,delay=0){ try{
+  if(!AC) tone(1,0.01,{vol:0});
+  const t0=AC.currentTime+delay;
+  const len=~~(AC.sampleRate*dur), buf=AC.createBuffer(1,len,AC.sampleRate);
+  const d=buf.getChannelData(0); for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*(1-i/len);
+  const src=AC.createBufferSource(); src.buffer=buf;
+  const g=AC.createGain(); g.gain.value=vol;
+  src.connect(g); g.connect(MASTER); src.start(t0);
+}catch(e){} }
+const SC=[523.25,659.25,783.99,1046.5,1318.5];
+const sndFire=()=>{                                /* 短促"噗!"空气炮, 干净不轰耳 */
+  tone(260,0.1,{type:'sine',vol:0.32,slide:90});
+  noise(0.05,0.16);
+};
+let lastClank=0;
+const sndClank=v=>{                                /* 极轻软"嗒", 低调点缀不抢戏 */
+  const now=Date.now();
+  if(now-lastClank<120) return;
+  lastClank=now;
+  tone(200+Math.random()*40, 0.045, {type:'sine', vol:Math.min(0.12, v*0.006), at:0.003});
+};
+const sndPoof=()=>{                                /* 倒下得分: 上滑泡泡音, 悦耳有奖励感 */
+  tone(520,0.09,{type:'sine',vol:0.3,slide:1040});
+  tone(1568,0.06,{vol:0.12,delay:0.05});
+};
+const sndWin=()=>{ [0,1,2,3,4].forEach(i=>{ tone(SC[i],0.26,{type:'triangle',vol:0.35,delay:i*0.1}); }); tone(2093,0.5,{vol:0.13,delay:0.55}); };
+const sndLose=()=>{ tone(330,0.35,{type:'triangle',vol:0.28}); tone(247,0.5,{type:'triangle',vol:0.24,delay:0.22}); };
+const vib=p=>{ try{ navigator.vibrate&&navigator.vibrate(p); }catch(e){} };
+
+/* ================= stage 竖屏适配 ================= */
+const stage=document.getElementById('stage');
+function fitStage(){
+  const W=innerWidth, H=innerHeight, ratio=0.52;
+  let h=H, w=h*ratio;
+  if(w>W){ w=W; h=w/ratio; }
+  stage.style.width=w+'px'; stage.style.height=h+'px';
+}
+fitStage(); addEventListener('resize',()=>{ fitStage(); onResize(); });
+
+/* ================= three 场景: 沙滩 ================= */
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+stage.prepend(renderer.domElement);
+const scene=new THREE.Scene();
+scene.background=new THREE.Color('#8fd0f2');
+scene.fog=new THREE.Fog('#a8dcf7', 18, 42);
+
+const camera=new THREE.PerspectiveCamera(52, 0.52, 0.1, 100);
+camera.position.set(0, 3.6, 8.2);
+camera.lookAt(0, 1.6, 0);
+function onResize(){
+  const w=stage.clientWidth, h=stage.clientHeight;
+  renderer.setSize(w,h);
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  camera.aspect=w/h; camera.updateProjectionMatrix();
+}
+onResize();
+
+scene.add(new THREE.AmbientLight(0xffffff,0.7));
+const sun=new THREE.DirectionalLight(0xfff2dd,1.7);
+sun.position.set(4,12,6);
+sun.castShadow=true;
+sun.shadow.mapSize.set(1024,1024);
+sun.shadow.camera.left=-8; sun.shadow.camera.right=8;
+sun.shadow.camera.top=10; sun.shadow.camera.bottom=-6;
+scene.add(sun);
+
+const M=(color,extra={})=>new THREE.MeshStandardMaterial({color,roughness:.7,metalness:.02,...extra});
+// 沙地
+const sand=new THREE.Mesh(new THREE.PlaneGeometry(80,60), M('#eed9a4',{roughness:1}));
+sand.rotation.x=-Math.PI/2; sand.receiveShadow=true;
+scene.add(sand);
+// 海(远处蓝带)
+const sea=new THREE.Mesh(new THREE.PlaneGeometry(80,20), M('#4aa8d8',{roughness:.4}));
+sea.rotation.x=-Math.PI/2; sea.position.set(0,0.02,-24);
+scene.add(sea);
+// 装饰: 棕榈树(简单几何)
+function palm(x,z){
+  const g=new THREE.Group();
+  const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.12,.2,2.6,8), M('#9a6a3a'));
+  trunk.position.y=1.3; trunk.castShadow=true; g.add(trunk);
+  for(let i=0;i<5;i++){
+    const leaf=new THREE.Mesh(new THREE.SphereGeometry(.8,8,6), M('#3f9c4d'));
+    leaf.scale.set(1.4,.22,.5);
+    leaf.position.set(Math.cos(i/5*6.28)*0.75, 2.7, Math.sin(i/5*6.28)*0.75);
+    leaf.rotation.y=-i/5*6.28; leaf.rotation.z=0.35;
+    g.add(leaf);
+  }
+  g.position.set(x,0,z);
+  scene.add(g);
+}
+palm(-5.5,-8); palm(6,-11);
+
+/* ================= 罐子纹理(红白条纹+星) ================= */
+function canTexture(){
+  const c=document.createElement('canvas'); c.width=256; c.height=128;
+  const x=c.getContext('2d');
+  x.fillStyle='#e04b38'; x.fillRect(0,0,256,128);
+  x.fillStyle='#f7f2e8'; x.fillRect(0,42,256,44);
+  x.fillStyle='#f5b93d'; x.font='900 40px serif'; x.textAlign='center'; x.textBaseline='middle';
+  for(const cx of [42,128,214]) x.fillText('★',cx,65);
+  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace;
+  return t;
+}
+const CAN_TEX=canTexture();
+const CAN_MAT_SIDE=new THREE.MeshStandardMaterial({map:CAN_TEX,roughness:.55});
+const CAN_MAT_CAP=M('#b23524',{roughness:.5});
+
+/* ================= 物理世界 ================= */
+const world=new CANNON.World({gravity:new CANNON.Vec3(0,-22,0)});
+world.allowSleep=true;                             /* 静止罐休眠锁死, 不再自己晃动 */
+const matGround=new CANNON.Material('g'), matCan=new CANNON.Material('c'), matBall=new CANNON.Material('b');
+world.addContactMaterial(new CANNON.ContactMaterial(matGround,matCan,{friction:0.35,restitution:0.1}));
+world.addContactMaterial(new CANNON.ContactMaterial(matCan,matCan,{friction:0.25,restitution:0.1}));
+world.addContactMaterial(new CANNON.ContactMaterial(matBall,matCan,{friction:0.2,restitution:0.35}));
+world.addContactMaterial(new CANNON.ContactMaterial(matBall,matGround,{friction:0.4,restitution:0.3}));
+const groundBody=new CANNON.Body({type:CANNON.Body.STATIC,shape:new CANNON.Plane(),material:matGround});
+groundBody.quaternion.setFromEuler(-Math.PI/2,0,0);
+world.addBody(groundBody);
+
+/* ================= 关卡 ================= */
+const CW=0.78, CH=0.95, CR=0.34;         // 罐间距/高/半径
+const PED_TOP=1.15, PED_H=1.15, PED_D=1.5;
+function levelDef(L){
+  const seq=[
+    {t:'pyr',n:3,at:[0],balls:4},
+    {t:'pyr',n:4,at:[0],balls:3},
+    {t:'wall',c:3,r:3,at:[0],balls:3},
+    {t:'towers',h:4,at:[0],balls:5},
+    {t:'pyr',n:5,at:[0],balls:5},
+    {t:'pyr',n:3,at:[-1.7,1.7],balls:5},
+    {t:'wall',c:5,r:3,at:[0],balls:5},
+    {t:'wall',c:2,r:4,at:[-2,0,2],balls:8},
+    {t:'pyr',n:4,at:[-1.9,1.9],balls:7},
+    {t:'wall',c:2,r:3,at:[-2.4,-0.8,0.8,2.4],balls:7},
+  ];
+  return seq[(L-1)%seq.length];
+}
+
+let level=1, score=0, ballsLeft=4, playing=true, overShown=false, settleTimer=0;
+let CS=1;                                          /* 罐缩放: 关卡越高罐越小, 精度要求越高 */
+let cans=[], peds=[], liveBall=null, ballAge=0, ballCalm=0;
+const boardGroup=new THREE.Group(); scene.add(boardGroup);
+
+function clearWorld(){
+  for(const c of cans){ world.removeBody(c.body); boardGroup.remove(c.mesh); }
+  for(const p of peds){ world.removeBody(p.body); boardGroup.remove(p.mesh); }
+  if(liveBall){ world.removeBody(liveBall.body); boardGroup.remove(liveBall.mesh); liveBall=null; }
+  cans=[]; peds=[];
+}
+function mkCan(x,y,z){
+  const r=CR*CS, h=CH*CS;
+  const mesh=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,20), [CAN_MAT_SIDE,CAN_MAT_CAP,CAN_MAT_CAP]);
+  mesh.castShadow=true; mesh.receiveShadow=true;
+  boardGroup.add(mesh);
+  const body=new CANNON.Body({mass:0.55*CS, material:matCan,
+    shape:new CANNON.Box(new CANNON.Vec3(r*0.82,h/2,r*0.82)),
+    position:new CANNON.Vec3(x,y,z), linearDamping:0.05, angularDamping:0.12});
+  body.sleepSpeedLimit=0.5; body.sleepTimeLimit=0.3;   /* 快速入睡 */
+  world.addBody(body);
+  cans.push({mesh,body});
+}
+function mkPed(cx,w){
+  const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,PED_H,PED_D), M('#9a6a3a',{roughness:.8}));
+  mesh.position.set(cx,PED_H/2,0);
+  mesh.castShadow=true; mesh.receiveShadow=true;
+  boardGroup.add(mesh);
+  const body=new CANNON.Body({type:CANNON.Body.STATIC, material:matGround,
+    shape:new CANNON.Box(new CANNON.Vec3(w/2,PED_H/2,PED_D/2)),
+    position:new CANNON.Vec3(cx,PED_H/2,0)});
+  world.addBody(body);
+  peds.push({mesh,body});
+}
+function buildLevel(){
+  clearWorld();
+  document.getElementById('over').classList.remove('show');
+  const def=levelDef(level);
+  CS=Math.max(0.6, 1-Math.max(0,level-3)*0.05);    /* L1-3标准, L4起每关-5%, 封底0.6 */
+  ballsLeft=def.balls; playing=true; overShown=false; settleTimer=0;
+  if(level===1) score=0;
+  const cw=CW*CS, ch=CH*CS;
+  const baseY=PED_TOP+ch/2+0.01;
+  const plans=[];
+  const addGroup=(cx)=>{
+    const start=plans.length;
+    if(def.t==='pyr'){
+      for(let row=0;row<def.n;row++){ const cnt=def.n-row;
+        for(let i=0;i<cnt;i++) plans.push([cx+(i-(cnt-1)/2)*cw, baseY+row*ch]); }
+    } else if(def.t==='wall'){
+      for(let row=0;row<def.r;row++)
+        for(let i=0;i<def.c;i++) plans.push([cx+(i-(def.c-1)/2)*cw, baseY+row*ch]);
+    } else if(def.t==='towers'){
+      for(const off of [-1,1])
+        for(let row=0;row<def.h;row++) plans.push([cx+off*cw*1.5, baseY+row*ch]);
+    }
+    const xs=plans.slice(start).map(p=>p[0]);
+    mkPed((Math.min(...xs)+Math.max(...xs))/2, Math.max(...xs)-Math.min(...xs)+CR*CS*2+0.25);
+  };
+  for(const off of def.at) addGroup(off);
+  for(const [x,y] of plans) mkCan(x,y,0);
+  fitCamera(plans);
+  document.getElementById('level').textContent='LEVEL '+level;
+  renderHud();
+}
+/* 相机按关卡内容适配: 高塔/宽阵自动拉远抬高, 保证全部入画且不进HUD区 */
+function fitCamera(plans){
+  let maxY=2.2, maxX=1.2;
+  for(const [x,y] of plans){ maxY=Math.max(maxY,y+CH*CS); maxX=Math.max(maxX,Math.abs(x)+0.6); }
+  const need=Math.max((maxY-3.0)*1.0, (maxX-1.2)*2.0, 0);   /* 竖屏水平视野窄, 横向权重加大 */
+  camera.position.set(0, 3.6+need*0.45, 8.2+need*1.6);
+  camera.lookAt(0, 1.55+need*0.38, 0);
+}
+function renderHud(){
+  document.getElementById('score').textContent='⭐ '+score;
+  const def=levelDef(level);
+  document.getElementById('balls').innerHTML=Array.from({length:def.balls},(_,i)=>
+    `<span class="b${i>=ballsLeft?' used':''}">⚫</span>`).join('');
+}
+
+/* ================= 炮台 ================= */
+const cannonGroup=new THREE.Group();
+const barrel=new THREE.Mesh(new THREE.CylinderGeometry(.16,.22,1.1,14), M('#5a83f0',{roughness:.35,metalness:.2,emissive:'#1a2a6a',emissiveIntensity:.4}));
+barrel.castShadow=true;
+barrel.geometry.translate(0,.55,0);
+cannonGroup.add(barrel);
+const baseBall=new THREE.Mesh(new THREE.SphereGeometry(.34,16,12), M('#f05540',{emissive:'#701a10',emissiveIntensity:.35}));
+baseBall.castShadow=true;
+cannonGroup.add(baseBall);
+const MUZZLE=new THREE.Vector3(0, 1.0, 5.6);
+cannonGroup.position.copy(MUZZLE).setY(0.65);
+scene.add(cannonGroup);
+
+/* 弹道预览点 */
+const previewPts=[];
+for(let i=0;i<11;i++){
+  const p=new THREE.Mesh(new THREE.SphereGeometry(.07,8,6), new THREE.MeshBasicMaterial({color:'#ffffff',transparent:true,opacity:.85}));
+  p.visible=false; scene.add(p); previewPts.push(p);
+}
+const BALL_SPEED=26, G=22;
+/* 弹道解算: 反解仰角使炮弹经重力后恰好穿过target → 指哪打哪 */
+function aimDir(target){
+  const dx=target.x-MUZZLE.x, dy=target.y-MUZZLE.y, dz=target.z-MUZZLE.z;
+  const R=Math.hypot(dx,dz);
+  if(R<0.01) return new THREE.Vector3(0,1,0);
+  const a=G*R*R/(2*BALL_SPEED*BALL_SPEED);
+  const disc=R*R-4*a*(a+dy);
+  const tan=disc>=0? (R-Math.sqrt(disc))/(2*a) : R/(2*a);   // 低弹道解; 打不到时用最远角
+  return new THREE.Vector3(dx/R, tan, dz/R).normalize();
+}
+function showPreview(target){
+  const dir=aimDir(target);
+  let p=new THREE.Vector3(MUZZLE.x,MUZZLE.y,MUZZLE.z);
+  let v=dir.clone().multiplyScalar(BALL_SPEED);
+  const dt=1/30;
+  for(let i=0;i<previewPts.length;i++){
+    for(let k=0;k<2;k++){ v.y-=G*dt; p.addScaledVector(v,dt); }
+    previewPts[i].position.copy(p);
+    previewPts[i].visible=p.y>0.1;
+  }
+  // 炮管朝向
+  const flat=Math.hypot(dir.x,dir.z);
+  cannonGroup.rotation.z=Math.atan2(-dir.x,dir.y*0.6+flat*0.8)*0.6;
+  cannonGroup.rotation.x=-Math.atan2(-dir.z,dir.y+1.2)*0.5;
+}
+function hidePreview(){ previewPts.forEach(p=>p.visible=false); }
+
+/* ================= 开火 ================= */
+function fire(target){
+  if(!playing||ballsLeft<=0||liveBall) return false;
+  ballsLeft--; renderHud();
+  const dir=aimDir(target);
+  const mesh=new THREE.Mesh(new THREE.SphereGeometry(.2,16,12), M('#2b3350',{roughness:.35,metalness:.4}));
+  mesh.castShadow=true;
+  boardGroup.add(mesh);
+  const body=new CANNON.Body({mass:3.2, material:matBall,
+    shape:new CANNON.Sphere(.2),
+    position:new CANNON.Vec3(MUZZLE.x,MUZZLE.y,MUZZLE.z)});
+  body.velocity.set(dir.x*BALL_SPEED, dir.y*BALL_SPEED, dir.z*BALL_SPEED);
+  world.addBody(body);
+  liveBall={mesh,body}; ballAge=0; ballCalm=0;
+  /* 冲击波: 碰撞时震飞周围罐 */
+  body.addEventListener('collide', e=>{
+    const sp=body.velocity.length();
+    if(sp>3) sndClank(sp);
+    if(sp<6) return;
+    const R0=(2.2-Math.min((level-1)*0.07,0.7))*CS;   /* 冲击范围随罐缩小 */
+    const k=(4.2-Math.min((level-1)*0.12,1.2))*Math.min(1,sp/18)*CS;
+    for(const c of cans){
+      const d=c.body.position.vsub(body.position);
+      const dist=d.length();
+      if(dist<R0&&dist>0.01){
+        const f=k*(1-dist/R0)*c.body.mass;
+        d.normalize();
+        c.body.wakeUp();                               /* 休眠罐先唤醒再施冲击 */
+        c.body.applyImpulse(new CANNON.Vec3(d.x*f, Math.abs(d.y)*f*0.5+f*0.45, d.z*f-f*0.3), c.body.position);
+      }
+    }
+  });
+  sndFire(); vib(20);
+  return true;
+}
+
+/* ================= 瞄准输入 ================= */
+const raycaster=new THREE.Raycaster();
+const aimPlane=new THREE.Plane(new THREE.Vector3(0,0,1), 0);   // z=0 竖直面
+let aiming=false, aimTarget=new THREE.Vector3(0,2,0);
+function pointerToTarget(e){
+  const r=renderer.domElement.getBoundingClientRect();
+  const nx=((e.clientX-r.left)/r.width)*2-1;
+  const ny=-((e.clientY-r.top)/r.height)*2+1;
+  raycaster.setFromCamera(new THREE.Vector2(nx,ny), camera);
+  const hit=new THREE.Vector3();
+  raycaster.ray.intersectPlane(aimPlane, hit);
+  if(!hit) return null;
+  hit.y=Math.max(0.6, Math.min(7, hit.y));
+  hit.x=Math.max(-4, Math.min(4, hit.x));
+  return hit;
+}
+renderer.domElement.addEventListener('pointerdown',e=>{
+  if(!playing||ballsLeft<=0||liveBall) return;
+  if(tutorialActive && tutStep!==TUT_TOTAL-1) return;
+  const t=pointerToTarget(e);
+  if(!t) return;
+  aiming=true; aimTarget.copy(t); showPreview(aimTarget);
+  if(tutorialActive) document.getElementById('tut').classList.remove('show');
+});
+renderer.domElement.addEventListener('pointermove',e=>{
+  if(!aiming) return;
+  const t=pointerToTarget(e);
+  if(t){ aimTarget.copy(t); showPreview(aimTarget); }
+});
+addEventListener('pointerup',()=>{
+  if(aiming){ aiming=false; hidePreview(); fire(aimTarget); }
+  if(tutorialActive && tutStep===TUT_TOTAL-1) document.getElementById('tut').classList.add('show');
+});
+
+/* ================= 得分/胜负 ================= */
+function stagePos(v3){
+  const v=v3.clone().project(camera);
+  return { x:(v.x+1)/2*stage.clientWidth, y:(-v.y+1)/2*stage.clientHeight };
+}
+function sparkleAt(p){
+  const ui=stage.querySelector('.ui');
+  for(let i=0;i<6;i++){
+    const s=document.createElement('div');
+    s.className='sparkle'; s.textContent=['💥','✨','⭐'][i%3];
+    s.style.left=p.x+'px'; s.style.top=p.y+'px';
+    s.style.setProperty('--dx',(Math.random()-.5)*90+'px');
+    s.style.setProperty('--dy',(Math.random()-.5)*90-30+'px');
+    ui.appendChild(s);
+    setTimeout(()=>s.remove(),650);
+  }
+  const sc=document.createElement('div');
+  sc.className='scorePop'; sc.textContent='+100';
+  sc.style.left=(p.x-16)+'px'; sc.style.top=p.y+'px';
+  ui.appendChild(sc);
+  setTimeout(()=>sc.remove(),1000);
+}
+function physicsStep(){
+  world.step(1/60);
+  // 罐掉落判定: 掉出台面(y低于台顶-0.4)或飞远
+  for(let i=cans.length-1;i>=0;i--){
+    const c=cans[i], p=c.body.position;
+    if(p.y<PED_TOP-0.45*CS-0.1 || Math.abs(p.x)>7 || Math.abs(p.z)>6){
+      sparkleAt(stagePos(new THREE.Vector3(p.x,Math.max(p.y,0.4),p.z)));
+      world.removeBody(c.body); boardGroup.remove(c.mesh);
+      cans.splice(i,1);
+      score+=100; renderHud(); sndPoof(); vib(10);
+      if(tutorialActive) endTutorial(true);
+    }
+  }
+  // 炮弹生命周期
+  if(liveBall){
+    ballAge++;
+    if(liveBall.body.velocity.length()<0.5) ballCalm++; else ballCalm=0;
+    const p=liveBall.body.position;
+    if(ballAge>300||ballCalm>40||p.y<-2||Math.abs(p.x)>12||Math.abs(p.z)>14){
+      world.removeBody(liveBall.body); boardGroup.remove(liveBall.mesh); liveBall=null;
+    }
+  }
+  // 胜负
+  if(playing&&!overShown){
+    if(cans.length===0){ playing=false; overShown=true; win(); }
+    else if(ballsLeft===0&&!liveBall){
+      const calm=cans.every(c=>c.body.velocity.length()<0.3);
+      settleTimer=calm? settleTimer+1:0;
+      if(settleTimer>55){ playing=false; overShown=true; lose(); }
+    }
+  }
+}
+function win(){
+  sndWin(); vib([50,60,50,60,80]);
+  document.getElementById('overIcon').textContent='🎉';
+  document.getElementById('overTitle').textContent=`Level ${level} complete!`;
+  document.getElementById('overSub').textContent=`Score ⭐ ${score}  ·  Balls left ${ballsLeft}`;
+  document.getElementById('nextBtn').textContent='Next Level';
+  document.getElementById('exitBtn').style.display='none';
+  score+=ballsLeft*50;
+  level++; store.set('s3_level',level);
+  setTimeout(()=>document.getElementById('over').classList.add('show'),700);
+}
+function lose(){
+  sndLose(); vib(90);
+  document.getElementById('overIcon').textContent='😵';
+  document.getElementById('overTitle').textContent='Out of cannonballs!';
+  document.getElementById('overSub').textContent=`${cans.length} cans still standing`;
+  document.getElementById('nextBtn').textContent='Try Again';
+  document.getElementById('exitBtn').style.display='';
+  setTimeout(()=>document.getElementById('over').classList.add('show'),500);
+}
+document.getElementById('nextBtn').addEventListener('click',()=>{
+  bridge.stat('h5_click',{game_name:'smashfest3d', page_name:'restart'});
+  buildLevel();
+});
+document.getElementById('exitBtn').addEventListener('click',()=>bridge.exit());
+document.getElementById('exitTop').addEventListener('click',()=>bridge.exit());
+
+/* ================= 分步引导 ================= */
+let tutorialActive=false, tutStep=-1;
+const TUT_TOTAL=3;
+const TUT=[
+  { icon:'🥫', tip:'Knock ALL the cans off the stand!', sub:'Clear them before your balls run out' },
+  { icon:'🎯', tip:'Drag to aim — dots show the path', sub:'Release your finger to FIRE!' },
+  { icon:'👆', tip:'Your turn — aim at the cans and fire!', sub:'', op:true },
+];
+function setDots(step){
+  const box=document.getElementById('coachDots'); box.innerHTML='';
+  for(let i=0;i<TUT_TOTAL;i++){ const d=document.createElement('div'); d.className='dot'+(i===step?' on':''); box.appendChild(d); }
+}
+function positionFinger(){
+  const f=document.getElementById('tutFinger');
+  const from=stagePos(new THREE.Vector3(MUZZLE.x, MUZZLE.y-0.2, MUZZLE.z));
+  let c=new THREE.Vector3(0, PED_TOP+1.2, 0);
+  if(cans.length){
+    c.set(0,0,0);
+    for(const it of cans) c.add(new THREE.Vector3(it.body.position.x,it.body.position.y,it.body.position.z));
+    c.multiplyScalar(1/cans.length);
+  }
+  const to=stagePos(c);
+  f.style.setProperty('--fx',(from.x-14)+'px');
+  f.style.setProperty('--fy',(from.y-40)+'px');
+  f.style.setProperty('--tx',(to.x-14)+'px');
+  f.style.setProperty('--ty',(to.y-10)+'px');
+}
+function gotoStep(n){
+  tutStep=n;
+  const step=TUT[n], coach=document.getElementById('coach'), next=document.getElementById('coachNext');
+  document.getElementById('coachIcon').textContent=step.icon;
+  document.getElementById('coachTip').textContent=step.tip;
+  document.getElementById('coachSub').textContent=step.sub||'';
+  setDots(n);
+  if(step.op){
+    coach.classList.add('pass'); next.classList.add('wait');
+    document.getElementById('tut').classList.add('show');
+    positionFinger();
+    clearInterval(window.__tutTimer);
+    window.__tutTimer=setInterval(()=>{ if(tutorialActive) positionFinger(); else clearInterval(window.__tutTimer); },800);
+  } else {
+    coach.classList.remove('pass'); next.classList.remove('wait');
+    next.textContent=(n===TUT_TOTAL-2)? 'Got it! →' : 'Next →';
+    document.getElementById('tut').classList.remove('show');
+  }
+  tone(600,0.05,{vol:0.15});
+}
+function setupTutorial(){
+  if(store.get('s3_tut')) return;
+  tutorialActive=true;
+  document.getElementById('coach').classList.add('show');
+  gotoStep(0);
+}
+document.getElementById('coachNext').addEventListener('click',()=>{ if(tutStep<TUT_TOTAL-1) gotoStep(tutStep+1); });
+function endTutorial(grad){
+  document.getElementById('tut').classList.remove('show');
+  document.getElementById('coach').classList.remove('show','pass');
+  clearInterval(window.__tutTimer);
+  if(grad){ tutorialActive=false; store.set('s3_tut','1'); showToast('Great shot! 💥'); }
+}
+
+/* ================= 主循环: 物理setInterval, 渲染rAF ================= */
+setInterval(physicsStep, 1000/60);
+function animate(){
+  requestAnimationFrame(animate);
+  for(const c of cans){ c.mesh.position.copy(c.body.position); c.mesh.quaternion.copy(c.body.quaternion); }
+  if(liveBall){ liveBall.mesh.position.copy(liveBall.body.position); liveBall.mesh.quaternion.copy(liveBall.body.quaternion); }
+  renderer.render(scene,camera);
+}
+animate();
+
+level=(+store.get('s3_level'))||1;
+buildLevel();
+setupTutorial();
+/* 供测试 */
+window.__s3={ step:physicsStep, fire, camera, get cans(){return cans}, get ballsLeft(){return ballsLeft},
+  get level(){return level}, set level(v){level=v}, get score(){return score}, get liveBall(){return liveBall},
+  buildLevel, MUZZLE, BALL_SPEED, G, THREE:{Vector3:THREE.Vector3}, endTutorial };
+</script>
+</body>
+</html>
