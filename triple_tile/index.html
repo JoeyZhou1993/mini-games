@@ -317,11 +317,11 @@ const TYPE_KEYS=Object.keys(TYPES);
 function levelCfg(L){
   /* kinds: 款数(第三个越难凑); groups: 三连组总数(总物=groups*3) */
   const K=[3,4,5,6,6,7,8,9,9,9];
-  const G=[3,4,5,6,12,14,16,18,20,22];
+  const G=[3,4,5,6,9,12,15,18,20,22];   /* 总数 9,12,15,18,27,36,45,54,60,66 平滑递增 */
   const i=Math.min(L,10)-1;
   return {kinds:K[i], groups:L<=10? G[i] : 22};
 }
-let level=1, playing=true;
+let level=1, playing=true, levelGen=0;   /* levelGen: 关卡世代号, 转场后旧动画作废 */
 let items=[], nextId=1, tray=[], busyCount=0, clearingCount=0;   /* clearing: 三消结算中的格子不算占位 */
 const SLOTS=7;
 
@@ -334,6 +334,7 @@ function clearLevel(){
   renderTray();
 }
 function buildLevel(){
+  levelGen++;
   clearLevel();
   document.getElementById('over').classList.remove('show');
   document.getElementById('tray').classList.remove('warn');
@@ -399,6 +400,7 @@ function slotScreenPos(idx){
 }
 function collectItem(item){
   if(tray.length>=SLOTS) return;
+  const gen=levelGen;                     /* 捕获世代: 转场后此动画作废 */
   item.state='flying';
   world.removeBody(item.body);
   busyCount++;
@@ -425,6 +427,7 @@ function collectItem(item){
     else{
       scene.remove(item.mesh);
       item.state='gone';
+      if(gen!==levelGen) return;          /* 已转场: 丢弃, 不碰新关托盘/计数 */
       busyCount--;
       landInTray(item.type);
     }
@@ -455,6 +458,9 @@ function checkEnd(){
   if(!playing) return;
   if(busyCount>0) return;
   if(items.every(it=>it.state==='gone') && tray.length===0){ playing=false; win(); return; }
+  if(items.every(it=>it.state!=='board') && tray.length>0 && clearingCount===0){
+    playing=false; lose(); return;        /* 兜底: 场空但托盘散牌凑不齐 = 失败 */
+  }
   if(tray.length-clearingCount>=SLOTS){ playing=false; lose(); }   /* 结算中的3格不算满 */
 }
 function sparkleAt(p){
