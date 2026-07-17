@@ -1,100 +1,116 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Triple Match 3D Demo</title>
+<meta name="description" content="Triple Tile 3D — tap fruits, match three, clear the pile!">
+<title>Triple Tile 3D</title>
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  html,body { width:100%; height:100%; overflow:hidden; background:#1c2030; font-family:-apple-system,"PingFang SC","Helvetica Neue",Arial,sans-serif; }
-  #stage { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); background:#3d4460; overflow:hidden; border-radius:12px; }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; }
+  html,body { width:100%; height:100%; overflow:hidden; background:#141828; font-family:-apple-system,"PingFang SC","Helvetica Neue",Arial,sans-serif; }
+  #stage { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); background:#3d4460; overflow:hidden; border-radius:14px; }
   canvas { display:block; }
   .ui { position:absolute; inset:0; pointer-events:none; }
 
-  #levelLabel { position:absolute; top:14px; left:12px; color:#cdd6ff; font-weight:800; font-size:16px; }
-  #levelLabel b { color:#fff; }
+  #topbar { position:absolute; top:8px; left:10px; right:10px; display:flex; align-items:center; justify-content:space-between; z-index:20; }
+  #title { color:#fff; font-weight:800; font-size:16px; text-shadow:0 2px 4px rgba(0,0,0,.4); }
+  #level { color:#fff; font-weight:800; font-size:13px;
+    background:linear-gradient(180deg,#58c6f2,#2f9ad6); padding:6px 14px; border-radius:16px;
+    box-shadow:0 2px 0 #1f78ab, 0 3px 6px rgba(40,120,170,.4); }
+  #exitTop { border:none; cursor:pointer; width:34px; height:34px; border-radius:50%; pointer-events:auto;
+    background:#fff; color:#4b7c96; font-size:17px; font-weight:800; line-height:1;
+    box-shadow:0 2px 0 rgba(0,0,0,.2); }
 
-  #timerPill { position:absolute; top:10px; left:50%; transform:translateX(-50%); background:rgba(10,12,20,.75);
-    color:#fff; font-weight:800; font-size:17px; padding:5px 14px 5px 10px; border-radius:10px; display:flex; align-items:center; gap:6px; }
-  #timerPill .clock { width:18px; height:18px; border-radius:50%; background:radial-gradient(circle at 35% 35%, #ffd76b, #e89b1c); display:inline-block; }
-
-  #goals { position:absolute; top:48px; left:10px; display:flex; gap:8px; }
-  .goalCard { width:52px; height:62px; background:linear-gradient(#ffffff,#dfe4f2); border-radius:10px; position:relative;
-    display:flex; align-items:center; justify-content:center; font-size:30px; box-shadow:0 3px 6px rgba(0,0,0,.35); transition:transform .15s, opacity .3s; }
-  .goalCard .cnt { position:absolute; top:-6px; left:-6px; background:#3b3f52; color:#fff; font-size:13px; font-weight:800;
-    min-width:20px; height:20px; border-radius:7px; display:flex; align-items:center; justify-content:center; padding:0 4px; }
-  .goalCard.done { background:linear-gradient(#fef9d9,#ffd76b); }
-  .goalCard.done .cnt { background:#2ba84a; }
-  .goalCard.done .cnt::after { content:"✓"; }
-  .goalCard.done .cnt span { display:none; }
-  .goalCard.pulse { transform:scale(1.15); }
-
-  #tray { position:absolute; left:50%; transform:translateX(-50%); bottom:74px; width:calc(100% - 20px); max-width:400px;
-    background:linear-gradient(#2a2d3d,#171923); border-radius:14px; padding:7px; display:flex; gap:5px; box-shadow:inset 0 2px 8px rgba(0,0,0,.6), 0 2px 0 rgba(255,255,255,.06); }
+  #tray { position:absolute; left:50%; transform:translateX(-50%); bottom:12px; width:calc(100% - 20px); max-width:400px;
+    background:linear-gradient(#2a2d3d,#171923); border-radius:14px; padding:7px; display:flex; gap:5px;
+    box-shadow:inset 0 2px 8px rgba(0,0,0,.6), 0 2px 0 rgba(255,255,255,.06); z-index:20; }
   .slot { flex:1; aspect-ratio:1; background:linear-gradient(#171a24,#232636); border-radius:9px; display:flex; align-items:center; justify-content:center;
     font-size:26px; box-shadow:inset 0 2px 4px rgba(0,0,0,.5); position:relative; }
   .slot .item { transition:transform .12s; }
   .slot.pop .item { animation:popout .3s forwards; }
   @keyframes popout { 0%{transform:scale(1)} 40%{transform:scale(1.35)} 100%{transform:scale(0); opacity:0} }
+  #tray.warn { animation:trayWarn .7s ease-in-out infinite alternate; }
+  @keyframes trayWarn { from{box-shadow:inset 0 2px 8px rgba(0,0,0,.6);} to{box-shadow:inset 0 2px 8px rgba(0,0,0,.6), 0 0 18px rgba(230,90,70,.65);} }
 
-  #boosters { position:absolute; left:50%; transform:translateX(-50%); bottom:10px; width:calc(100% - 20px); max-width:400px;
-    display:flex; gap:8px; align-items:center; }
-  .boost { flex:1; height:52px; background:linear-gradient(#454a63,#2b2e40); border-radius:12px; display:flex; flex-direction:column;
-    align-items:center; justify-content:center; color:#aeb6d8; font-size:11px; font-weight:700; position:relative; pointer-events:auto; border:none; }
-  .boost .ic { font-size:22px; line-height:1; }
-  .boost.locked { opacity:.75; }
-  .boost .badge { position:absolute; top:-6px; right:-4px; background:#b04ae0; color:#fff; font-size:12px; font-weight:800;
-    width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
-  #magnetBtn { background:linear-gradient(#5a83f0,#3454b8); color:#fff; cursor:pointer; }
-  #magnetBtn:active { transform:scale(.94); }
-  #pauseBtn { flex:0 0 44px; height:44px; border-radius:10px; background:#2b2e40; color:#fff; font-size:16px; border:none; pointer-events:auto; }
+  /* coach 引导 */
+  #tut { position:absolute; inset:0; z-index:52; pointer-events:none; display:none; }
+  #tut.show { display:block; }
+  #tutFinger { position:absolute; font-size:40px; filter:drop-shadow(0 3px 4px rgba(0,0,0,.45));
+    animation:tutTap 1.1s ease-in-out infinite; transition:left .35s, top .35s; will-change:left,top; }
+  @keyframes tutTap { 0%,100%{transform:translateY(0) scale(1);} 45%{transform:translateY(6px) scale(.86);} 60%{transform:translateY(0) scale(1);} }
+  #coach { position:absolute; inset:0; display:none; z-index:54; }
+  #coach.show { display:block; }
+  #coachDim { position:absolute; inset:0; z-index:40; background:rgba(12,16,30,.6); transition:background .3s; }
+  #coach.pass #coachDim { background:rgba(12,16,30,.05); }
+  #coach.pass { pointer-events:none; }
+  #coachBar { position:absolute; left:6px; right:6px; top:6px; z-index:56;
+    background:#fff; border-radius:18px; padding:14px 20px 16px; text-align:center;
+    box-shadow:0 3px 20px rgba(0,0,0,.4); pointer-events:auto; }
+  #coachDots { display:flex; gap:6px; justify-content:center; margin-bottom:10px; }
+  #coachDots .dot { width:7px; height:7px; border-radius:50%; background:#cfe6f3; transition:all .25s; }
+  #coachDots .dot.on { background:#2f9ad6; width:20px; border-radius:4px; }
+  #coachIcon { font-size:32px; line-height:1; margin-bottom:5px; }
+  #coachTip { color:#2e5f7a; font-weight:800; font-size:16px; line-height:1.4; }
+  #coachSub { color:#7fa3b8; font-weight:700; font-size:12px; min-height:1.1em; margin-top:3px; }
+  #coachNext { margin-top:11px; border:none; cursor:pointer; font-size:16px; font-weight:800; color:#fff;
+    padding:10px 40px; border-radius:12px; background:linear-gradient(180deg,#58c6f2,#2f9ad6);
+    box-shadow:0 4px 0 #1f78ab; }
+  #coachNext:active { transform:translateY(3px); box-shadow:0 1px 0 #1f78ab; }
+  #coachNext.wait { display:none; }
+  #coach.pass #coachIcon, #coach.pass #coachDots, #coach.pass #coachSub { display:none; }
+  #coach.pass #coachBar { padding:8px 14px 10px; }
+  #coach.pass #coachTip { font-size:13px; }
 
-  #magnetTip { position:absolute; left:50%; transform:translateX(-50%); bottom:140px; background:linear-gradient(#fff7e0,#ffe9ad);
-    border:2px solid #e0a53c; color:#7a4d00; font-size:13px; font-weight:700; padding:7px 12px; border-radius:9px; white-space:nowrap;
-    opacity:0; transition:opacity .3s; }
+  /* 结算 */
+  #over { position:absolute; inset:0; z-index:60; display:none; align-items:center; justify-content:center; background:rgba(15,20,35,.75); backdrop-filter:blur(4px); pointer-events:auto; }
+  #over.show { display:flex; animation:fadeIn .3s ease; }
+  @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
+  #overCard { text-align:center; color:#2e5f7a; padding:26px 34px; background:#fff; border-radius:20px;
+    box-shadow:0 10px 30px rgba(0,0,0,.4); animation:cardIn .38s cubic-bezier(.34,1.4,.64,1); }
+  @keyframes cardIn { from{transform:scale(.72); opacity:0;} to{transform:scale(1); opacity:1;} }
+  #overCard .big { font-size:56px; }
+  #overCard h2 { font-size:24px; margin:8px 0 6px; }
+  #overCard .sub { color:#7fa3b8; font-size:14px; margin-bottom:20px; }
+  #nextBtn { border:none; cursor:pointer; font-size:17px; font-weight:800; color:#fff; padding:12px 38px; border-radius:13px;
+    background:linear-gradient(180deg,#ffb340,#ff8c1a); box-shadow:0 4px 0 #c96a08; }
+  #nextBtn:active { transform:translateY(3px); box-shadow:0 1px 0 #c96a08; }
 
-  .overlay { position:absolute; inset:0; background:rgba(8,10,18,.82); display:none; flex-direction:column; align-items:center;
-    justify-content:center; gap:22px; pointer-events:auto; z-index:10; }
-  .overlay.show { display:flex; }
-  .bigTitle { font-size:32px; font-weight:900; color:#ffd76b; text-shadow:0 3px 0 #a3541b, 0 6px 14px rgba(0,0,0,.5); letter-spacing:2px; }
-  .stars { font-size:52px; letter-spacing:6px; filter:drop-shadow(0 4px 6px rgba(0,0,0,.5)); }
-  .greenBtn { background:linear-gradient(#7ed95c,#3fa53a); border:none; color:#fff; font-size:19px; font-weight:800; padding:13px 52px;
-    border-radius:14px; box-shadow:0 4px 0 #2c7a28; cursor:pointer; }
-  .greenBtn:active { transform:translateY(3px); box-shadow:0 1px 0 #2c7a28; }
-  .subInfo { color:#fff; background:rgba(255,255,255,.12); padding:6px 16px; border-radius:9px; font-weight:700; }
+  #toast { position:absolute; left:50%; bottom:16%; transform:translateX(-50%) translateY(16px);
+    background:rgba(46,95,122,.94); color:#fff; font-weight:700; font-size:14px;
+    padding:9px 22px; border-radius:20px; opacity:0; pointer-events:none; z-index:100; transition:all .25s ease; }
+  #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 
-  .flyIcon { position:absolute; font-size:28px; pointer-events:none; z-index:5; will-change:transform; }
-  .sparkle { position:absolute; font-size:16px; pointer-events:none; z-index:6; animation:spark .6s forwards; }
+  .sparkle { position:absolute; font-size:16px; pointer-events:none; z-index:30; animation:spark .6s forwards; }
   @keyframes spark { 0%{transform:translate(0,0) scale(1); opacity:1} 100%{transform:translate(var(--dx),var(--dy)) scale(.3); opacity:0} }
 </style>
 </head>
 <body>
 <div id="stage">
   <div class="ui">
-    <div id="levelLabel">第<b>3</b>关</div>
-    <div id="timerPill"><span class="clock"></span><span id="timerText">4:00</span></div>
-    <div id="goals"></div>
+    <div id="topbar">
+      <div id="title">🍎 Triple Tile 3D</div>
+      <div id="level">LEVEL 1</div>
+      <button id="exitTop">✕</button>
+    </div>
     <div id="tray"></div>
-    <div id="boosters">
-      <button class="boost" id="magnetBtn"><span class="ic">🧲</span>磁铁<span class="badge" id="magnetCnt">3</span></button>
-      <button class="boost locked"><span class="ic">🎩</span>第5关 🔒</button>
-      <button class="boost locked"><span class="ic">🎈</span>第7关 🔒</button>
-      <button class="boost locked"><span class="ic">🌀</span>第9关 🔒</button>
-      <button id="pauseBtn">⏸</button>
+    <div id="tut"><div id="tutFinger">👆</div></div>
+    <div id="coach">
+      <div id="coachDim"></div>
+      <div id="coachBar">
+        <div id="coachDots"></div>
+        <div id="coachIcon">🍎</div>
+        <div id="coachTip"></div>
+        <div id="coachSub"></div>
+        <button id="coachNext">Next →</button>
+      </div>
     </div>
-    <div id="magnetTip">磁铁最多可收集3个目标物品</div>
-
-    <div class="overlay" id="winOverlay">
-      <div class="bigTitle">干得漂亮！</div>
-      <div class="stars">⭐⭐⭐</div>
-      <div class="subInfo" id="winTime">⏱ 3:30</div>
-      <button class="greenBtn" onclick="location.reload()">继续</button>
-    </div>
-    <div class="overlay" id="loseOverlay">
-      <div class="bigTitle" id="loseTitle">空位已用尽！</div>
-      <button class="greenBtn" id="clearTrayBtn">清空物品栏 🪙100</button>
-      <button class="greenBtn" style="background:linear-gradient(#8a90b0,#5a5f7a); box-shadow:0 4px 0 #41455c" onclick="location.reload()">重新开始</button>
-    </div>
+    <div id="over"><div id="overCard">
+      <div class="big" id="overIcon">🎉</div>
+      <h2 id="overTitle">Level 1 complete!</h2>
+      <div class="sub" id="overSub"></div>
+      <button id="nextBtn">Next Level</button>
+    </div></div>
+    <div id="toast"></div>
   </div>
 </div>
 
@@ -108,377 +124,464 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 
-/* ---------- layout: portrait stage ---------- */
-const stage = document.getElementById('stage');
-function fitStage() {
-  const W = innerWidth, H = innerHeight, ratio = 0.52;
-  let h = H, w = h * ratio;
-  if (w > W) { w = W; h = w / ratio; }
-  stage.style.width = w + 'px'; stage.style.height = h + 'px';
+/* ================= App桥 / 存储 / Toast(对标triple_match底座) ================= */
+const bridge={
+  fullScreen(on){ try{ if(window.android&&window.android.setFullScreen) window.android.setFullScreen(!!on); }catch(e){} },
+  exit(){ bridge.fullScreen(false);
+    try{ if(window.android&&window.android.exitGame){ window.android.exitGame(); return; } }catch(e){}
+    showToast('Exit'); }
+};
+bridge.fullScreen(true);
+const store={
+  get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+};
+let toastTimer=null;
+function showToast(txt){
+  const t=document.getElementById('toast');
+  t.textContent=txt; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),1600);
 }
-fitStage(); addEventListener('resize', () => { fitStage(); onResize(); });
+if(location.search.includes('reset')){
+  try{ ['t3_level','t3_tut','t3_best'].forEach(k=>localStorage.removeItem(k)); }catch(e){}
+  history.replaceState(null,'',location.pathname);
+}
 
-/* ---------- three ---------- */
-const renderer = new THREE.WebGLRenderer({ antialias:true });
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.outputColorSpace = THREE.SRGBColorSpace;
+/* ================= 音效(triple_match同款底座) ================= */
+let AC=null, MASTER=null;
+function tone(f,dur,opt={}){ try{
+  const {type='sine',vol=0.22,at=0.008,slide=null,delay=0}=opt;
+  AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+  if(!MASTER){ const c=AC.createDynamicsCompressor(); c.threshold.value=-18; c.ratio.value=6; c.connect(AC.destination);
+    MASTER=AC.createGain(); MASTER.gain.value=1.7; MASTER.connect(c); }
+  if(AC.state==='suspended') AC.resume();
+  const t0=AC.currentTime+delay;
+  const o=AC.createOscillator(), g=AC.createGain();
+  o.type=type; o.frequency.setValueAtTime(f,t0);
+  if(slide) o.frequency.exponentialRampToValueAtTime(slide,t0+dur);
+  g.gain.setValueAtTime(0,t0); g.gain.linearRampToValueAtTime(vol,t0+at);
+  g.gain.exponentialRampToValueAtTime(0.001,t0+dur);
+  o.connect(g); g.connect(MASTER); o.start(t0); o.stop(t0+dur+0.03);
+}catch(e){} }
+const SC=[523.25,659.25,783.99,1046.5,1318.5];
+const sndPick=()=>{ tone(SC[1],0.07,{type:'sine',vol:0.2}); };
+const sndMatch=()=>{ tone(SC[2],0.12,{type:'triangle',vol:0.32}); tone(SC[4],0.18,{vol:0.2,delay:0.06}); };
+const sndErr=()=>{ tone(200,0.1,{type:'triangle',vol:0.22}); };
+const sndWin=()=>{ [0,1,2,3,4].forEach(i=>{ tone(SC[i],0.26,{type:'triangle',vol:0.35,delay:i*0.1}); }); tone(2093,0.5,{vol:0.13,delay:0.55}); };
+const sndLose=()=>{ tone(330,0.35,{type:'triangle',vol:0.28}); tone(247,0.5,{type:'triangle',vol:0.24,delay:0.22}); };
+const vib=p=>{ try{ navigator.vibrate&&navigator.vibrate(p); }catch(e){} };
+
+/* ================= stage 竖屏 ================= */
+const stage=document.getElementById('stage');
+function fitStage(){
+  const W=innerWidth, H=innerHeight, ratio=0.52;
+  let h=H, w=h*ratio;
+  if(w>W){ w=W; h=w/ratio; }
+  stage.style.width=w+'px'; stage.style.height=h+'px';
+}
+fitStage(); addEventListener('resize',()=>{ fitStage(); onResize(); });
+
+/* ================= three ================= */
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputColorSpace=THREE.SRGBColorSpace;
 stage.prepend(renderer.domElement);
-
-const sceneBg = new THREE.Color('#3d4460');
-const scene = new THREE.Scene();
-scene.background = sceneBg;
-
-const camera = new THREE.PerspectiveCamera(46, 0.52, 0.1, 100);
+const scene=new THREE.Scene();
+scene.background=new THREE.Color('#3d4460');
+const camera=new THREE.PerspectiveCamera(46, 0.52, 0.1, 100);
 camera.position.set(0, 10.5, 3.4);
 camera.lookAt(0, 0, -0.35);
-
-function onResize() {
-  const w = stage.clientWidth, h = stage.clientHeight;
-  renderer.setSize(w, h);
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  camera.aspect = w / h; camera.updateProjectionMatrix();
+function onResize(){
+  const w=stage.clientWidth, h=stage.clientHeight;
+  renderer.setSize(w,h);
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  camera.aspect=w/h; camera.updateProjectionMatrix();
 }
 onResize();
-
-scene.add(new THREE.AmbientLight(0xffffff, 0.75));
-const sun = new THREE.DirectionalLight(0xfff2dd, 1.6);
-sun.position.set(3, 12, 4);
-sun.castShadow = true;
-sun.shadow.mapSize.set(1024, 1024);
-sun.shadow.camera.left = -5; sun.shadow.camera.right = 5;
-sun.shadow.camera.top = 6; sun.shadow.camera.bottom = -6;
+scene.add(new THREE.AmbientLight(0xffffff,0.75));
+const sun=new THREE.DirectionalLight(0xfff2dd,1.6);
+sun.position.set(3,12,4);
+sun.castShadow=true;
+sun.shadow.mapSize.set(1024,1024);
+sun.shadow.camera.left=-5; sun.shadow.camera.right=5;
+sun.shadow.camera.top=6; sun.shadow.camera.bottom=-6;
 scene.add(sun);
-
-const ground = new THREE.Mesh(
-  new THREE.PlaneGeometry(30, 30),
-  new THREE.MeshStandardMaterial({ color:'#3d4460', roughness:1 })
-);
-ground.rotation.x = -Math.PI/2;
-ground.receiveShadow = true;
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(30,30), new THREE.MeshStandardMaterial({color:'#3d4460',roughness:1}));
+ground.rotation.x=-Math.PI/2;
+ground.receiveShadow=true;
 scene.add(ground);
 
-/* ---------- physics ---------- */
-const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -18, 0) });
-world.allowSleep = true;
-const groundBody = new CANNON.Body({ type: CANNON.Body.STATIC, shape: new CANNON.Plane() });
-groundBody.quaternion.setFromEuler(-Math.PI/2, 0, 0);
+/* ================= 物理 ================= */
+const world=new CANNON.World({gravity:new CANNON.Vec3(0,-18,0)});
+world.allowSleep=true;
+const groundBody=new CANNON.Body({type:CANNON.Body.STATIC,shape:new CANNON.Plane()});
+groundBody.quaternion.setFromEuler(-Math.PI/2,0,0);
 world.addBody(groundBody);
-// invisible walls to keep the pile inside the camera view
-const wallDefs = [
-  { pos:[ 2.7,2,0], rot:[0,-Math.PI/2,0] }, { pos:[-2.7,2,0], rot:[0, Math.PI/2,0] },
-  { pos:[0,2, 2.6], rot:[0, Math.PI,0]  }, { pos:[0,2,-4.2], rot:[0,0,0] },
-];
-for (const wdef of wallDefs) {
-  const b = new CANNON.Body({ type: CANNON.Body.STATIC, shape: new CANNON.Plane() });
-  b.position.set(...wdef.pos);
-  b.quaternion.setFromEuler(...wdef.rot);
-  world.addBody(b);
+/* 隐形墙 = 相机视锥面(内推一个球半径): 水果最远滚到贴屏, 绝不出画 */
+/* 隐形墙: 沿"地面可视边界"的八字竖直墙(实测: 屏幕底窄±2.0/顶宽±2.5)
+   竖直无限高 → 高空生成的水果也被约束; 相机/画幅固定, 数值硬编码 */
+{
+  const mkWall=(px,pz,yaw)=>{
+    const b=new CANNON.Body({type:CANNON.Body.STATIC, shape:new CANNON.Plane()});
+    b.position.set(px,0,pz);
+    b.quaternion.setFromEuler(0,yaw,0);              /* Plane默认法线+z, 绕Y转向场内 */
+    world.addBody(b);
+  };
+  const tilt=Math.atan2(0.53, 7.57);                 /* 八字倾角: 底(±1.62,3.43)→顶(±2.15,-4.14) */
+  mkWall(-1.62,3.43,  Math.PI/2 + tilt);             /* 左墙(法线朝+x, 微朝内) */
+  mkWall( 1.62,3.43, -Math.PI/2 - tilt);             /* 右墙 */
+  mkWall(0,  3.05, Math.PI);                          /* 前墙(托盘上方, 法线-z) */
+  mkWall(0, -3.76, 0);                                /* 后墙(HUD下方, 法线+z) */
 }
 
-/* ---------- item factories (procedural, no assets) ---------- */
-const M = (color, extra={}) => new THREE.MeshStandardMaterial({ color, roughness:.55, metalness:.05, ...extra });
-function makeApple() {
-  const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.SphereGeometry(.36, 24, 20), M('#f05a28'));
-  body.scale.y = .9; g.add(body);
-  const stem = new THREE.Mesh(new THREE.CylinderGeometry(.03,.04,.16,8), M('#6b4a2b'));
-  stem.position.y = .36; g.add(stem);
-  const leaf = new THREE.Mesh(new THREE.SphereGeometry(.1, 10, 8), M('#4caf50'));
-  leaf.scale.set(1.4,.35,.7); leaf.position.set(.12,.38,0); g.add(leaf);
-  return { g, r:.38 };
+/* ================= 物品工厂(6模型x换色 = 9款) ================= */
+const M=(color,extra={})=>new THREE.MeshStandardMaterial({color,roughness:.55,metalness:.05,...extra});
+function makeApple(bodyColor,leafColor='#4caf50'){
+  return ()=>{
+    const g=new THREE.Group();
+    const body=new THREE.Mesh(new THREE.SphereGeometry(.36,24,20), M(bodyColor));
+    body.scale.y=.9; g.add(body);
+    const stem=new THREE.Mesh(new THREE.CylinderGeometry(.03,.04,.16,8), M('#6b4a2b'));
+    stem.position.y=.36; g.add(stem);
+    const leaf=new THREE.Mesh(new THREE.SphereGeometry(.1,10,8), M(leafColor));
+    leaf.scale.set(1.4,.35,.7); leaf.position.set(.12,.38,0); g.add(leaf);
+    return {g,r:.38};
+  };
 }
-function makeBanana() {
-  const g = new THREE.Group();
-  const curve = new THREE.Mesh(new THREE.TorusGeometry(.32, .12, 12, 20, Math.PI*1.1), M('#ffc72c'));
-  curve.rotation.z = Math.PI*-.05; g.add(curve);
-  const tip = new THREE.Mesh(new THREE.SphereGeometry(.11,8,8), M('#8a6d1d'));
+function makeBanana(){
+  const g=new THREE.Group();
+  const curve=new THREE.Mesh(new THREE.TorusGeometry(.32,.12,12,20,Math.PI*1.1), M('#ffc72c'));
+  curve.rotation.z=Math.PI*-.05; g.add(curve);
+  const tip=new THREE.Mesh(new THREE.SphereGeometry(.11,8,8), M('#8a6d1d'));
   tip.position.set(.32,0,0); g.add(tip);
-  return { g, r:.38 };
+  return {g,r:.38};
 }
-function makeGrape() {
-  const g = new THREE.Group();
-  const positions = [[0,0,0],[.16,.02,.1],[-.16,.02,.1],[.08,.05,-.14],[-.08,.05,-.14],[0,.18,.06],[.13,.17,-.05],[-.13,.17,-.05],[0,.32,0]];
-  for (const p of positions) {
-    const b = new THREE.Mesh(new THREE.SphereGeometry(.13, 12, 10), M('#8e44ad'));
-    b.position.set(...p); g.add(b);
-  }
-  return { g, r:.36 };
+function makeGrape(color){
+  return ()=>{
+    const g=new THREE.Group();
+    const positions=[[0,0,0],[.16,.02,.1],[-.16,.02,.1],[.08,.05,-.14],[-.08,.05,-.14],[0,.18,.06],[.13,.17,-.05],[-.13,.17,-.05],[0,.32,0]];
+    for(const p of positions){
+      const b=new THREE.Mesh(new THREE.SphereGeometry(.13,12,10), M(color));
+      b.position.set(...p); g.add(b);
+    }
+    return {g,r:.36};
+  };
 }
-function makeKiwi() {
-  const g = new THREE.Group();
-  const half = new THREE.Mesh(new THREE.SphereGeometry(.33, 20, 14, 0, Math.PI*2, 0, Math.PI/2), M('#7a5230'));
+function makeKiwi(){
+  const g=new THREE.Group();
+  const half=new THREE.Mesh(new THREE.SphereGeometry(.33,20,14,0,Math.PI*2,0,Math.PI/2), M('#7a5230'));
   g.add(half);
-  const flesh = new THREE.Mesh(new THREE.CircleGeometry(.32, 24), M('#8db600'));
-  flesh.rotation.x = -Math.PI/2; flesh.position.y = .005; g.add(flesh);
-  const core = new THREE.Mesh(new THREE.CircleGeometry(.12, 16), M('#e8efc3'));
-  core.rotation.x = -Math.PI/2; core.position.y = .012; g.add(core);
-  g.position.y = 0;
-  return { g, r:.34 };
+  const flesh=new THREE.Mesh(new THREE.CircleGeometry(.32,24), M('#8db600'));
+  flesh.rotation.x=-Math.PI/2; flesh.position.y=.005; g.add(flesh);
+  const core=new THREE.Mesh(new THREE.CircleGeometry(.12,16), M('#e8efc3'));
+  core.rotation.x=-Math.PI/2; core.position.y=.012; g.add(core);
+  return {g,r:.34};
 }
-function makeLeaf() {
-  const g = new THREE.Group();
-  const blade = new THREE.Mesh(new THREE.SphereGeometry(.34, 14, 10), M('#57a63e'));
+function makeLeaf(){
+  const g=new THREE.Group();
+  const blade=new THREE.Mesh(new THREE.SphereGeometry(.34,14,10), M('#57a63e'));
   blade.scale.set(1.15,.18,.75); g.add(blade);
-  const stem = new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,.3,6), M('#3c7a2a'));
-  stem.rotation.z = Math.PI/2; stem.position.x = .45; g.add(stem);
-  return { g, r:.33 };
+  const stem=new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,.3,6), M('#3c7a2a'));
+  stem.rotation.z=Math.PI/2; stem.position.x=.45; g.add(stem);
+  return {g,r:.33};
 }
-function makeFrog() {
-  const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.SphereGeometry(.32, 20, 16), M('#69b64a'));
+function makeFrog(){
+  const g=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.SphereGeometry(.32,20,16), M('#69b64a'));
   body.scale.set(1.1,.85,1); g.add(body);
-  const belly = new THREE.Mesh(new THREE.SphereGeometry(.22, 14, 12), M('#e8f2d8'));
+  const belly=new THREE.Mesh(new THREE.SphereGeometry(.22,14,12), M('#e8f2d8'));
   belly.scale.set(1,.7,.8); belly.position.set(0,-.05,.16); g.add(belly);
-  for (const s of [-1,1]) {
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(.1, 12, 10), M('#7ec95e'));
+  for(const s of [-1,1]){
+    const eye=new THREE.Mesh(new THREE.SphereGeometry(.1,12,10), M('#7ec95e'));
     eye.position.set(.16*s,.26,.12); g.add(eye);
-    const pupil = new THREE.Mesh(new THREE.SphereGeometry(.04, 8, 8), M('#222'));
+    const pupil=new THREE.Mesh(new THREE.SphereGeometry(.04,8,8), M('#222'));
     pupil.position.set(.16*s,.28,.2); g.add(pupil);
   }
-  return { g, r:.36 };
+  return {g,r:.36};
 }
-const TYPES = {
-  apple:  { make: makeApple,  icon:'🍎' },
-  banana: { make: makeBanana, icon:'🍌' },
-  grape:  { make: makeGrape,  icon:'🍇' },
-  kiwi:   { make: makeKiwi,   icon:'🥝' },
-  leaf:   { make: makeLeaf,   icon:'🍃' },
-  frog:   { make: makeFrog,   icon:'🐸' },
+const TYPES={
+  apple:  {make:makeApple('#f05a28'), icon:'🍎'},
+  green:  {make:makeApple('#8bc34a','#2e7d32'), icon:'🍏'},
+  orange: {make:makeApple('#ff9800','#e65100'), icon:'🍊'},
+  banana: {make:makeBanana, icon:'🍌'},
+  grape:  {make:makeGrape('#8e44ad'), icon:'🍇'},
+  ggrape: {make:makeGrape('#7cb342'), icon:'🫒'},
+  kiwi:   {make:makeKiwi, icon:'🥝'},
+  leaf:   {make:makeLeaf, icon:'🍃'},
+  frog:   {make:makeFrog, icon:'🐸'},
 };
+const TYPE_KEYS=Object.keys(TYPES);
 
-/* ---------- level setup ---------- */
-const GOALS = { apple:6, grape:3, banana:6 };           // like the reference video
-const BOARD = { apple:9, banana:9, grape:6, kiwi:9, leaf:9, frog:9 }; // multiples of 3
-const items = [];   // { id, type, mesh, body, state:'board'|'flying'|'gone' }
-let nextId = 1;
+/* ================= 关卡: 10关生死循环(对标triple_match) ================= */
+function levelCfg(L){
+  /* kinds: 款数(第三个越难凑); groups: 三连组总数(总物=groups*3) */
+  const K=[3,4,5,6,6,7,8,9,9,9];
+  const G=[3,4,5,6,12,14,16,18,20,22];
+  const i=Math.min(L,10)-1;
+  return {kinds:K[i], groups:L<=10? G[i] : 22};
+}
+let level=1, playing=true;
+let items=[], nextId=1, tray=[], busyCount=0, clearingCount=0;   /* clearing: 三消结算中的格子不算占位 */
+const SLOTS=7;
 
-function spawnAll() {
-  const list = [];
-  for (const [t, n] of Object.entries(BOARD)) for (let i=0;i<n;i++) list.push(t);
-  list.sort(() => Math.random()-.5);
-  list.forEach((t, i) => {
-    const { g, r } = TYPES[t].make();
-    g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+function clearLevel(){
+  for(const it of items){
+    if(it.state==='board') world.removeBody(it.body);
+    scene.remove(it.mesh);
+  }
+  items=[]; tray=[]; busyCount=0; clearingCount=0;
+  renderTray();
+}
+function buildLevel(){
+  clearLevel();
+  document.getElementById('over').classList.remove('show');
+  document.getElementById('tray').classList.remove('warn');
+  playing=true;
+  const {kinds,groups}=levelCfg(level);
+  const pool=[];
+  for(let g=0,k=0; g<groups; g++,k=(k+1)%kinds) pool.push(TYPE_KEYS[k],TYPE_KEYS[k],TYPE_KEYS[k]);
+  pool.sort(()=>Math.random()-.5);
+  pool.forEach((t,i)=>{
+    const {g,r}=TYPES[t].make();
+    g.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } });
     scene.add(g);
-    const body = new CANNON.Body({
-      mass: 1, shape: new CANNON.Sphere(r),
-      position: new CANNON.Vec3((Math.random()-.5)*4.4, 1.5 + (i%12)*0.75 + Math.random()*.4, (Math.random()-.5)*3.6 - .8),
-      linearDamping: .12, angularDamping: .3,
+    const body=new CANNON.Body({
+      mass:1, shape:new CANNON.Sphere(r),
+      position:new CANNON.Vec3((Math.random()-.5)*3.0, 1.5+(i%12)*0.75+Math.random()*.4, (Math.random()-.5)*3.2-.6),   /* 出生区在墙内 */
+      linearDamping:.12, angularDamping:.3,
     });
     body.velocity.set((Math.random()-.5)*2.5, 0, (Math.random()-.5)*2.5);
-    body.quaternion.setFromEuler(Math.random()*6, Math.random()*6, Math.random()*6);
-    body.sleepSpeedLimit = .25; body.sleepTimeLimit = .6;
+    body.quaternion.setFromEuler(Math.random()*6,Math.random()*6,Math.random()*6);
+    body.sleepSpeedLimit=.25; body.sleepTimeLimit=.6;
     world.addBody(body);
-    items.push({ id: nextId++, type: t, mesh: g, body, state: 'board' });
+    items.push({id:nextId++, type:t, mesh:g, body, state:'board'});
   });
+  document.getElementById('level').textContent='LEVEL '+level;
 }
-spawnAll();
-window.__dbg = { items, world, camera };
 
-/* ---------- UI: goals / tray / timer ---------- */
-const goalsEl = document.getElementById('goals');
-const goalState = { ...GOALS };
-function renderGoals() {
-  goalsEl.innerHTML = '';
-  for (const [t, n] of Object.entries(goalState)) {
-    const d = document.createElement('div');
-    d.className = 'goalCard' + (n<=0 ? ' done' : '');
-    d.dataset.type = t;
-    d.innerHTML = `<span class="cnt"><span>${Math.max(n,0)}</span></span>${TYPES[t].icon}`;
-    goalsEl.appendChild(d);
-  }
-}
-renderGoals();
-
-const trayEl = document.getElementById('tray');
-const SLOTS = 7;
-let tray = []; // array of type strings
-function renderTray(popIdx = []) {
-  trayEl.innerHTML = '';
-  for (let i=0;i<SLOTS;i++) {
-    const s = document.createElement('div');
-    s.className = 'slot' + (popIdx.includes(i) ? ' pop' : '');
-    if (tray[i]) s.innerHTML = `<span class="item">${TYPES[tray[i]].icon}</span>`;
+/* ================= 托盘 ================= */
+const trayEl=document.getElementById('tray');
+function renderTray(popIdx=[]){
+  trayEl.innerHTML='';
+  for(let i=0;i<SLOTS;i++){
+    const s=document.createElement('div');
+    s.className='slot'+(popIdx.includes(i)? ' pop':'');
+    if(tray[i]) s.innerHTML=`<span class="item">${TYPES[tray[i]].icon}</span>`;
     trayEl.appendChild(s);
   }
+  trayEl.classList.toggle('warn', tray.length-clearingCount>=SLOTS-1);
 }
-renderTray();
 
-let timeLeft = 240, gameOver = false;
-const timerText = document.getElementById('timerText');
-setInterval(() => {
-  if (gameOver) return;
-  timeLeft--;
-  timerText.textContent = `${Math.floor(timeLeft/60)}:${String(timeLeft%60).padStart(2,'0')}`;
-  if (timeLeft <= 0) fail('时间到！');
-}, 1000);
-
-/* ---------- collect flow ---------- */
-const raycaster = new THREE.Raycaster();
-const pointer = new THREE.Vector2();
-let busyCount = 0; // items currently flying
-
-renderer.domElement.addEventListener('pointerdown', e => {
-  if (gameOver) return;
-  const rect = renderer.domElement.getBoundingClientRect();
-  pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-  pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-  raycaster.setFromCamera(pointer, camera);
-  const meshes = items.filter(it => it.state === 'board').map(it => it.mesh);
-  const hits = raycaster.intersectObjects(meshes, true);
-  if (!hits.length) return;
-  let obj = hits[0].object;
-  while (obj.parent && !items.some(it => it.mesh === obj)) obj = obj.parent;
-  const item = items.find(it => it.mesh === obj);
-  if (item) collectItem(item);
+/* ================= 点击收集 ================= */
+const raycaster=new THREE.Raycaster();
+const pointer=new THREE.Vector2();
+renderer.domElement.addEventListener('pointerdown',e=>{
+  if(!playing) return;
+  if(tutorialActive && tutStep!==TUT_TOTAL-1) return;
+  const rect=renderer.domElement.getBoundingClientRect();
+  pointer.x=((e.clientX-rect.left)/rect.width)*2-1;
+  pointer.y=-((e.clientY-rect.top)/rect.height)*2+1;
+  raycaster.setFromCamera(pointer,camera);
+  const meshes=items.filter(it=>it.state==='board').map(it=>it.mesh);
+  const hits=raycaster.intersectObjects(meshes,true);
+  if(!hits.length) return;
+  let obj=hits[0].object;
+  while(obj.parent && !items.some(it=>it.mesh===obj)) obj=obj.parent;
+  const item=items.find(it=>it.mesh===obj);
+  if(item) collectItem(item);
 });
-
-function slotScreenPos(idx) {
-  const rect = trayEl.getBoundingClientRect();
-  const stageRect = stage.getBoundingClientRect();
-  const slotW = rect.width / SLOTS;
-  return { x: rect.left - stageRect.left + slotW*(idx+.5), y: rect.top - stageRect.top + rect.height/2 };
+function slotScreenPos(idx){
+  const rect=trayEl.getBoundingClientRect();
+  const sr=stage.getBoundingClientRect();
+  const slotW=rect.width/SLOTS;
+  return {x:rect.left-sr.left+slotW*(idx+.5), y:rect.top-sr.top+rect.height/2};
 }
-
-function collectItem(item) {
-  if (tray.length >= SLOTS) return;
-  item.state = 'flying';
+function collectItem(item){
+  if(tray.length>=SLOTS) return;
+  item.state='flying';
   world.removeBody(item.body);
   busyCount++;
-  // decide insert position: after last same type
-  let insertAt = tray.length;
-  for (let i=tray.length-1;i>=0;i--) if (tray[i]===item.type) { insertAt = i+1; break; }
-  tray.splice(insertAt, 0, item.type);
+  sndPick(); vib(8);
+  let insertAt=tray.length;
+  for(let i=tray.length-1;i>=0;i--) if(tray[i]===item.type){ insertAt=i+1; break; }
+  tray.splice(insertAt,0,item.type);
   renderTray();
-  // fly the 3D mesh toward the slot's world-space point
-  const sp = slotScreenPos(insertAt);
-  const ndc = new THREE.Vector2(
-    (sp.x / stage.clientWidth) * 2 - 1,
-    -(sp.y / stage.clientHeight) * 2 + 1
-  );
-  const ray = new THREE.Raycaster();
-  ray.setFromCamera(ndc, camera);
-  const target = ray.ray.at(9, new THREE.Vector3());
-  const from = item.mesh.position.clone();
-  const start = performance.now(), dur = 340;
-  (function fly(now) {
-    const t = Math.min((now - start) / dur, 1);
-    const k = t*t*(3-2*t);
-    item.mesh.position.lerpVectors(from, target, k);
-    item.mesh.position.y += Math.sin(t*Math.PI) * 1.2;
-    const s = 1 - .6*k;
-    item.mesh.scale.setScalar(s);
-    if (t < 1) requestAnimationFrame(fly);
-    else {
+  if(tutorialActive) setTimeout(positionFinger,80);
+  const sp=slotScreenPos(insertAt);
+  const ndc=new THREE.Vector2((sp.x/stage.clientWidth)*2-1, -(sp.y/stage.clientHeight)*2+1);
+  const ray=new THREE.Raycaster();
+  ray.setFromCamera(ndc,camera);
+  const target=ray.ray.at(9,new THREE.Vector3());
+  const from=item.mesh.position.clone();
+  const start=performance.now(), dur=340;
+  (function fly(now){
+    const t=Math.min((now-start)/dur,1);
+    const k=t*t*(3-2*t);
+    item.mesh.position.lerpVectors(from,target,k);
+    item.mesh.position.y+=Math.sin(t*Math.PI)*1.2;
+    item.mesh.scale.setScalar(1-.6*k);
+    if(t<1) requestAnimationFrame(fly);
+    else{
       scene.remove(item.mesh);
-      item.state = 'gone';
+      item.state='gone';
       busyCount--;
       landInTray(item.type);
     }
   })(start);
 }
-
-function landInTray(type) {
-  // goal progress counts per collected item
-  if (goalState[type] !== undefined && goalState[type] > 0) {
-    goalState[type]--;
-    renderGoals();
-    const card = goalsEl.querySelector(`[data-type="${type}"]`);
-    if (card) { card.classList.add('pulse'); setTimeout(()=>card.classList.remove('pulse'), 160); }
-  }
-  // triple check
-  const idxs = [];
-  tray.forEach((t,i) => { if (t===type) idxs.push(i); });
-  if (idxs.length >= 3) {
-    const kill = idxs.slice(0,3);
+function landInTray(type){
+  const idxs=[];
+  tray.forEach((t,i)=>{ if(t===type) idxs.push(i); });
+  if(idxs.length>=3){
+    const kill=idxs.slice(0,3);
+    clearingCount+=3;
     renderTray(kill);
+    sndMatch(); vib([25,35,25]);
     sparkleAt(slotScreenPos(kill[1]));
-    setTimeout(() => {
-      tray = tray.filter((_,i) => !kill.includes(i));
+    setTimeout(()=>{
+      tray=tray.filter((_,i)=>!kill.includes(i));
+      clearingCount-=3;
       renderTray();
+      if(tutorialActive) endTutorial(true);
       checkEnd();
-    }, 320);
+    },320);
   } else {
     renderTray();
     checkEnd();
   }
 }
-
-function checkEnd() {
-  if (gameOver) return;
-  if (busyCount > 0) return;
-  if (Object.values(goalState).every(v => v <= 0)) {
-    gameOver = true;
-    document.getElementById('winTime').textContent = '⏱ ' + timerText.textContent;
-    document.getElementById('winOverlay').classList.add('show');
-    return;
-  }
-  if (tray.length >= SLOTS) fail('空位已用尽！');
+function checkEnd(){
+  if(!playing) return;
+  if(busyCount>0) return;
+  if(items.every(it=>it.state==='gone') && tray.length===0){ playing=false; win(); return; }
+  if(tray.length-clearingCount>=SLOTS){ playing=false; lose(); }   /* 结算中的3格不算满 */
 }
-
-function fail(title) {
-  if (gameOver) return;
-  gameOver = true;
-  document.getElementById('loseTitle').textContent = title;
-  document.getElementById('loseOverlay').classList.add('show');
-}
-document.getElementById('clearTrayBtn').addEventListener('click', () => {
-  tray = []; renderTray();
-  gameOver = false;
-  document.getElementById('loseOverlay').classList.remove('show');
-});
-
-function sparkleAt(p) {
-  for (let i=0;i<6;i++) {
-    const s = document.createElement('div');
-    s.className = 'sparkle'; s.textContent = '✨';
-    s.style.left = p.x + 'px'; s.style.top = p.y + 'px';
-    s.style.setProperty('--dx', (Math.random()-.5)*90 + 'px');
-    s.style.setProperty('--dy', (Math.random()-.5)*90 - 30 + 'px');
-    stage.querySelector('.ui').appendChild(s);
-    setTimeout(() => s.remove(), 650);
+function sparkleAt(p){
+  const ui=stage.querySelector('.ui');
+  for(let i=0;i<6;i++){
+    const s=document.createElement('div');
+    s.className='sparkle'; s.textContent='✨';
+    s.style.left=p.x+'px'; s.style.top=p.y+'px';
+    s.style.setProperty('--dx',(Math.random()-.5)*90+'px');
+    s.style.setProperty('--dy',(Math.random()-.5)*90-30+'px');
+    ui.appendChild(s);
+    setTimeout(()=>s.remove(),650);
   }
 }
 
-/* ---------- magnet booster ---------- */
-let magnetUses = 3, tipShown = false;
-const magnetBtn = document.getElementById('magnetBtn');
-const magnetTip = document.getElementById('magnetTip');
-magnetBtn.addEventListener('click', () => {
-  if (gameOver || magnetUses <= 0) return;
-  if (!tipShown) {
-    tipShown = true;
-    magnetTip.style.opacity = 1;
-    setTimeout(() => magnetTip.style.opacity = 0, 1800);
-  }
-  const targetType = Object.keys(goalState).find(t =>
-    goalState[t] > 0 && items.some(it => it.state==='board' && it.type===t));
-  if (!targetType) return;
-  const picks = items.filter(it => it.state==='board' && it.type===targetType).slice(0, 3);
-  const room = SLOTS - tray.length;
-  if (room <= 0) return;
-  magnetUses--;
-  document.getElementById('magnetCnt').textContent = magnetUses;
-  picks.slice(0, Math.min(3, room)).forEach((it, i) => setTimeout(() => {
-    if (it.state === 'board' && !gameOver) collectItem(it);
-  }, i * 180));
-});
+/* ================= 胜负(对标triple_match: 死亡回L1+Best) ================= */
+function win(){
+  sndWin(); vib([50,60,50,60,80]);
+  document.getElementById('overIcon').textContent='🎉';
+  document.getElementById('overTitle').textContent=`Level ${level} complete!`;
+  document.getElementById('overSub').textContent='Perfect!';
+  document.getElementById('nextBtn').textContent='Next Level';
+  level++; store.set('t3_level',level);
+  setTimeout(()=>document.getElementById('over').classList.add('show'),600);
+}
+function lose(){
+  sndLose(); vib(90);
+  const best=Math.max(+(store.get('t3_best')||0), level);
+  store.set('t3_best',best);
+  document.getElementById('overIcon').textContent='😵';
+  document.getElementById('overTitle').textContent='Tray is full!';
+  document.getElementById('overSub').textContent=`Run ended at Level ${level} · Best ${best}`;
+  document.getElementById('nextBtn').textContent='Try Again';
+  level=1; store.set('t3_level',1);
+  setTimeout(()=>document.getElementById('over').classList.add('show'),700);
+}
+document.getElementById('nextBtn').addEventListener('click',()=>buildLevel());
+document.getElementById('exitTop').addEventListener('click',()=>bridge.exit());
 
-/* ---------- main loop ---------- */
-const clock = new THREE.Clock();
-function animate() {
+/* ================= coach 引导(4步, 对标triple_match) ================= */
+let tutorialActive=false, tutStep=-1;
+const TUT_TOTAL=4;
+const TUT=[
+  { icon:'🍎', tip:'Match 3 identical fruits to clear them!', sub:'Goal: clear the whole pile' },
+  { icon:'🧺', tip:'Tap any fruit — it flies into the tray', sub:'Same fruits stack together' },
+  { icon:'⚠️', tip:'The tray holds only 7 fruits!', sub:'If it fills up you lose — pick wisely' },
+  { icon:'👆', tip:'Your turn — tap 3 matching fruits!', sub:'', op:true },
+];
+function setDots(step){
+  const box=document.getElementById('coachDots'); box.innerHTML='';
+  for(let i=0;i<TUT_TOTAL;i++){ const d=document.createElement('div'); d.className='dot'+(i===step?' on':''); box.appendChild(d); }
+}
+function tutTargetItem(){
+  const free=items.filter(it=>it.state==='board');
+  if(!free.length) return null;
+  for(const t of tray){ const m=free.find(it=>it.type===t); if(m) return m; }
+  const cnt={}; free.forEach(it=>cnt[it.type]=(cnt[it.type]||0)+1);
+  const best=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0][0];
+  return free.find(it=>it.type===best);
+}
+function positionFinger(){
+  if(tutStep!==TUT_TOTAL-1) return;
+  const it=tutTargetItem();
+  const f=document.getElementById('tutFinger');
+  if(!it){ f.style.display='none'; return; }
+  f.style.display='';
+  const v=it.mesh.position.clone().project(camera);
+  f.style.left=((v.x+1)/2*stage.clientWidth-14)+'px';
+  f.style.top=((-v.y+1)/2*stage.clientHeight-6)+'px';
+}
+function gotoStep(n){
+  tutStep=n;
+  const step=TUT[n], coach=document.getElementById('coach'), next=document.getElementById('coachNext');
+  document.getElementById('coachIcon').textContent=step.icon;
+  document.getElementById('coachTip').textContent=step.tip;
+  document.getElementById('coachSub').textContent=step.sub||'';
+  setDots(n);
+  if(step.op){
+    coach.classList.add('pass'); next.classList.add('wait');
+    document.getElementById('tut').classList.add('show');
+    positionFinger();
+    clearInterval(window.__tutTimer);
+    window.__tutTimer=setInterval(()=>{ if(tutorialActive) positionFinger(); else clearInterval(window.__tutTimer); },800);
+  } else {
+    coach.classList.remove('pass'); next.classList.remove('wait');
+    next.textContent=(n===TUT_TOTAL-2)? 'Got it! →' : 'Next →';
+    document.getElementById('tut').classList.remove('show');
+  }
+  sndPick();
+}
+function setupTutorial(){
+  if(store.get('t3_tut') || level!==1) return;
+  tutorialActive=true;
+  document.getElementById('coach').classList.add('show');
+  gotoStep(0);
+}
+document.getElementById('coachNext').addEventListener('click',()=>{ if(tutStep<TUT_TOTAL-1) gotoStep(tutStep+1); });
+function endTutorial(grad){
+  document.getElementById('tut').classList.remove('show');
+  document.getElementById('coach').classList.remove('show','pass');
+  clearInterval(window.__tutTimer);
+  if(grad){ tutorialActive=false; store.set('t3_tut','1'); showToast('Great! 🧺'); }
+}
+
+/* ================= 主循环: 物理setInterval, 渲染rAF ================= */
+function physicsStep(){
+  world.step(1/60);
+}
+setInterval(physicsStep, 1000/60);
+function animate(){
   requestAnimationFrame(animate);
-  const dt = Math.min(clock.getDelta(), .05);
-  world.step(1/60, dt, 3);
-  for (const it of items) {
-    if (it.state !== 'board') continue;
+  for(const it of items){
+    if(it.state!=='board') continue;
     it.mesh.position.copy(it.body.position);
     it.mesh.quaternion.copy(it.body.quaternion);
   }
-  renderer.render(scene, camera);
+  renderer.render(scene,camera);
 }
 animate();
+
+level=(+store.get('t3_level'))||1;
+buildLevel();
+setupTutorial();
+/* 供测试 */
+window.__t3={ step:physicsStep, camera, get items(){return items}, get tray(){return tray},
+  get level(){return level}, set level(v){level=v}, get playing(){return playing},
+  buildLevel, collectItem, levelCfg, endTutorial, TYPES };
 </script>
 </body>
 </html>
