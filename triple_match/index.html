@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="description" content="Triple Match — collect three of a kind, clear them all!">
 <meta name="theme-color" content="#4a5aa8">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>Triple Match</title>
+<title>Üçlü Eşleştir</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
   html,body { height:100%; overflow:hidden; }
@@ -120,8 +120,8 @@
 <body>
 <div id="game">
   <div id="topbar">
-    <div id="title">🧺 Triple Match</div>
-    <div id="level">LEVEL 1</div>
+    <div id="title">🏆 Rekor 1</div>
+    <div id="level">SEVİYE 1</div>
     <button id="restart" title="Exit">✕</button>
   </div>
   <div id="field"></div>
@@ -133,7 +133,7 @@
       <div id="coachIcon">🧺</div>
       <div id="coachTip"></div>
       <div id="coachSub"></div>
-      <button id="coachNext">Next →</button>
+      <button id="coachNext">İleri →</button>
     </div>
   </div>
   <div id="barwrap"><div id="bar">
@@ -142,13 +142,13 @@
   </div></div>
   <div id="over"><div id="overCard">
     <div class="big" id="overIcon">🎉</div>
-    <h2 id="overTitle">Level 1 complete!</h2>
+    <h2 id="overTitle">Seviye 1 tamamlandı!</h2>
     <div class="sub" id="overSub"></div>
-    <button id="nextBtn">Next Level</button>
+    <button id="nextBtn">Sonraki Seviye</button>
   </div></div>
 </div>
 <div id="toast"></div>
-<div id="rotate"><div class="ph">📱</div><div>Rotate to portrait</div></div>
+<div id="rotate"><div class="ph">📱</div><div>Dikey moda çevirin</div></div>
 
 <script>
 /* ================= App桥 / 存储 / Toast(同底座) ================= */
@@ -156,7 +156,7 @@ const bridge={
   fullScreen(on){ try{ if(window.android&&window.android.setFullScreen) window.android.setFullScreen(!!on); }catch(e){} },
   exit(){ bridge.fullScreen(false);
     try{ if(window.android&&window.android.exitGame){ window.android.exitGame(); return; } }catch(e){}
-    showToast('Exit'); }
+    showToast('Çıkış'); }
 };
 bridge.fullScreen(true);
 const store={
@@ -208,12 +208,12 @@ const BAR_CAP=7;
 const fieldEl=document.getElementById('field');
 
 function levelCfg(L){
-  /* 10关生死循环: 线性爬难, L9-10接近必死墙, 死后回L1重爬 */
-  const K=[3,4,5,6,6,7,8,9,10,11];              // 种类数(第三张越难凑)
-  const kinds=L<=10? K[L-1] : 12;
-  const sets = L<5?1 : L<10?2 : 3;              // 每种几组三连
-  const layers = L<3?2 : L<7?3 : 4;             // 堆叠深度
-  return {kinds, sets, layers};
+  /* 14关长线生死循环: 缓坡爬难, 死亡墙L12-14(累计约30分钟), 死后回L1重爬 */
+  const K=[3,4,5,6,5,6,7,7,8,8, 9,10,11,12];    // 种类数(第三张越难凑)
+  const S=[1,1,1,1,2,2,2,2,2,3, 3, 3, 3, 3];    // 每种几组三连
+  const Y=[2,2,3,3,3,3,3,4,4,4, 4, 4, 4, 4];    // 堆叠深度
+  const i=Math.min(L,14)-1;
+  return {kinds:K[i], sets:S[i], layers:Y[i]};
 }
 function genLevel(L){
   /* 容量优先: 先算全部可用位置, 牌数按容量裁剪且强制每款=3的倍数 → 永不丢牌/永可全消 */
@@ -256,7 +256,10 @@ function isBlocked(t){
 /* ================= 渲染与交互 ================= */
 function newLevel(){
   tiles.forEach(t=>t.el&&t.el.remove()); bar=[]; playing=true;
-  document.getElementById('level').textContent='LEVEL '+level;
+  const best=Math.max(+(store.get('tm_best')||0), level);   /* 到达即纪录 */
+  store.set('tm_best',best);
+  document.getElementById('title').textContent='🏆 Rekor '+best;
+  document.getElementById('level').textContent='SEVİYE '+level;
   document.getElementById('over').classList.remove('show');
   document.getElementById('barwrap').classList.remove('warn');
   const placed=genLevel(level);
@@ -346,9 +349,9 @@ function checkEnd(){
 function win(){
   playing=false; sndWin(); vib([50,60,50,60,80]);
   document.getElementById('overIcon').textContent='🎉';
-  document.getElementById('overTitle').textContent=`Level ${level} complete!`;
-  document.getElementById('overSub').textContent='Perfect!';
-  document.getElementById('nextBtn').textContent='Next Level';
+  document.getElementById('overTitle').textContent=`Seviye ${level} tamamlandı!`;
+  document.getElementById('overSub').textContent='Mükemmel!';
+  document.getElementById('nextBtn').textContent='Sonraki Seviye';
   level++; store.set('tm_level',level);
   setTimeout(()=>document.getElementById('over').classList.add('show'),600);
 }
@@ -357,9 +360,9 @@ function lose(){
   const best=Math.max(+(store.get('tm_best')||0), level);
   store.set('tm_best',best);
   document.getElementById('overIcon').textContent='😵';
-  document.getElementById('overTitle').textContent='Rack is full!';
-  document.getElementById('overSub').textContent=`Run ended at Level ${level} · Best ${best}`;
-  document.getElementById('nextBtn').textContent='Try Again';
+  document.getElementById('overTitle').textContent='Tepsi doldu!';
+  document.getElementById('overSub').textContent=`Seviye ${level}'de bitti · Rekor ${best}`;
+  document.getElementById('nextBtn').textContent='Tekrar Dene';
   level=1; store.set('tm_level',1);              /* 死亡: 回L1重新爬(10关生死循环) */
   setTimeout(()=>document.getElementById('over').classList.add('show'),700);
 }
@@ -395,17 +398,17 @@ function paintOpSpots(){
   tiles.filter(t=>!t.dead&&!t.inbar&&!isBlocked(t)&&t.kind===tutKind).forEach(t=>t.el.classList.add('spot'));
 }
 const TUT=[
-  { icon:'🧺', tip:'Match 3 identical tiles to clear them!', sub:'Goal: clear the whole board', draw(){} },
-  { icon:'✨', tip:'3 matching tiles in the tray disappear!', sub:'Look at the glowing tiles', draw(){
+  { icon:'🧺', tip:'Aynı 3 taşı eşleştir, yok olsunlar!', sub:'Hedef: tüm taşları temizle', draw(){} },
+  { icon:'✨', tip:'Tepsideki 3 aynı taş kaybolur!', sub:'Parlayan taşlara bak', draw(){
       tutKind=pickTutKind();
       tiles.filter(t=>!t.dead&&!t.inbar&&!isBlocked(t)&&t.kind===tutKind)
         .sort((a,b)=>b.y-a.y).slice(0,3).forEach(t=>t.el.classList.add('spot')); } },
-  { icon:'🔒', tip:'Dark tiles are locked!', sub:'Remove tiles on top to unlock them', draw(){
+  { icon:'🔒', tip:'Koyu taşlar kilitli!', sub:'Üstündeki taşları al, açılsınlar', draw(){
       const b=tiles.filter(t=>!t.dead&&!t.inbar&&isBlocked(t)).sort((a,b)=>b.y-a.y)[0];
       if(b) b.el.classList.add('spot'); } },
-  { icon:'⚠️', tip:'The tray holds only 7 tiles!', sub:'If it fills up you lose — pick wisely', draw(){
+  { icon:'⚠️', tip:'Tepsi en fazla 7 taş alır!', sub:'Dolarsa kaybedersin — dikkatli seç', draw(){
       document.getElementById('barwrap').classList.add('spot'); } },
-  { icon:'👆', tip:'Your turn — tap 3 matching tiles!', sub:'Collect the glowing ones', op:true, draw(){
+  { icon:'👆', tip:'Sıra sende — aynı 3 taşa dokun!', sub:'Parlayanları topla', op:true, draw(){
       tutKind=pickTutKind(); paintOpSpots(); } },
 ];
 function positionFinger(){
@@ -441,7 +444,7 @@ function gotoStep(n){
     positionFinger(); tutLoop();
   } else {
     coach.classList.remove('pass'); next.classList.remove('wait');
-    next.textContent=(n===TUT_TOTAL-2)? 'Got it! →' : 'Next →';
+    next.textContent=(n===TUT_TOTAL-2)? 'Anladım! →' : 'İleri →';
     document.getElementById('tut').classList.remove('show');
   }
   sndPick();
@@ -457,7 +460,7 @@ function endTutorial(grad){
   document.getElementById('tut').classList.remove('show');
   document.getElementById('coach').classList.remove('show','pass');
   clearInterval(tutTimer); clearSpot();
-  if(grad){ tutorialActive=false; store.set('tm_tut','1'); showToast('Great job! 🧺'); }
+  if(grad){ tutorialActive=false; store.set('tm_tut','1'); showToast('Harika! 🧺'); }
 }
 window.addEventListener('resize',()=>{ if(tutorialActive&&TUT[tutStep]) setTimeout(()=>{ clearSpot(); TUT[tutStep].draw(); positionFinger(); },80); });
 
