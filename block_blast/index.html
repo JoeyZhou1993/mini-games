@@ -202,14 +202,29 @@ const SHAPES = {
   B10:{color:'#7d6bff', v:rots4([[0,0],[1,0],[2,0],[2,1],[2,2]])}, // 靛蓝
   B11:{color:'#ff5fae', v:rots4([[0,0],[0,1],[0,2],[1,1]])}   // 亮粉
 };
-/* 宝石切面: 上亮/左次亮/右暗/下最暗 + 中心平台(按颜色缓存, 避免每帧拼串) */
+/* 宝石切面: 上亮/左次亮/右暗/下最暗 + 中心平台
+   低端机优化: 预渲染成 canvas 位图(dataURI)而非 conic-gradient
+   —— 老 Android WebView 对 conic-gradient 走软件渲染, 棋盘占满时 64 格渐变合成极卡;
+   位图贴图是 GPU 强项, 占满也不卡。按颜色缓存, 仅首次生成一次 */
+function mixHex(hex,toWhite,amt){
+  const n=parseInt(hex.slice(1),16); let r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+  const tg=toWhite?255:0;
+  r=Math.round(r+(tg-r)*amt); g=Math.round(g+(tg-g)*amt); b=Math.round(b+(tg-b)*amt);
+  return `rgb(${r},${g},${b})`;
+}
 const gemCache=new Map();
 function gemBg(c){
   let v=gemCache.get(c);
   if(!v){
-    const t=`color-mix(in srgb,${c},#fff 45%)`, l=`color-mix(in srgb,${c},#fff 16%)`,
-          r=`color-mix(in srgb,${c},#000 20%)`, b=`color-mix(in srgb,${c},#000 40%)`;
-    v=`linear-gradient(${c},${c}) center/62% 62% no-repeat, conic-gradient(from -45deg, ${t} 0 90deg, ${r} 90deg 180deg, ${b} 180deg 270deg, ${l} 270deg 360deg)`;
+    const S=64, cv=document.createElement('canvas'); cv.width=cv.height=S;
+    const x=cv.getContext('2d'), m=S/2;
+    const t=mixHex(c,true,0.45), l=mixHex(c,true,0.16), r=mixHex(c,false,0.20), b=mixHex(c,false,0.40);
+    x.fillStyle=c; x.fillRect(0,0,S,S);                               // 底色兜底(防三角交界细缝)
+    const tri=(col,ax,ay,bx,by)=>{ x.fillStyle=col; x.beginPath(); x.moveTo(ax,ay); x.lineTo(bx,by); x.lineTo(m,m); x.closePath(); x.fill(); };
+    tri(t,0,0,S,0); tri(r,S,0,S,S); tri(b,S,S,0,S); tri(l,0,S,0,0);   // 上/右/下/左 切面
+    const p=S*0.19, w=S*0.62;
+    x.fillStyle=c; x.fillRect(p,p,w,w);                               // 中心平台
+    v=`url(${cv.toDataURL()}) center/100% 100% no-repeat`;
     gemCache.set(c,v);
   }
   return v;
