@@ -9,6 +9,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="8" y="8" width="84" height="84" rx="14" fill="%233ab4ec"/><rect x="20" y="20" width="60" height="60" rx="6" fill="%2378d0f5"/></svg>'>
 <title>Block Blast</title>
+<script>/* 尽早检测低端机: 首屏首次绘制前就给<html>加.low, 低端机第一帧即轻量(降秒退) */
+try{ var _dm=navigator.deviceMemory,_hc=navigator.hardwareConcurrency;
+  if((_dm&&_dm<=4)||(!_dm&&_hc&&_hc<=4)) document.documentElement.classList.add('low'); }catch(e){}</script>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
   html,body { height:100%; overflow:hidden; }
@@ -141,6 +144,16 @@
   #rotate .ph { font-size:44px; animation:rot 1.6s ease-in-out infinite; }
   @keyframes rot { 0%,20%{transform:rotate(0);} 60%,100%{transform:rotate(90deg);} }
   @media (orientation:landscape) and (max-height:520px) { #rotate { display:flex; } }
+
+  /* ≤4GB/低端机降级(.low): 去掉重合成特效, 换加载与拖动流畅, 保留核心玩法+位图宝石 */
+  .low #over { backdrop-filter:none; }                 /* 弹窗背景模糊(合成杀手) */
+  .low #dragGhost { filter:none; }                     /* 拖动幽灵阴影: 每帧合成, 拖动全程常驻 */
+  .low .cell { box-shadow:none; }                       /* 64格内阴影 */
+  .low #boardwrap { box-shadow:0 3px 10px rgba(0,0,0,.4); }
+  .low #boardwrap.danger { animation:none; box-shadow:0 3px 10px rgba(0,0,0,.4), inset 0 0 0 3px #b03a30; }  /* 静态红框代替脉冲 */
+  .low #bestwrap .crown { filter:none; }                /* 常驻滤镜 */
+  .low .combo { filter:none; -webkit-text-stroke:0; text-shadow:0 2px 4px rgba(0,0,0,.55); }  /* 去多层glow */
+  .low .hcell.hpulse { animation:none; }                /* 拖动中消除预览的常驻闪烁 */
 </style>
 </head>
 <body>
