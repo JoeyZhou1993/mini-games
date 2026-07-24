@@ -11,7 +11,7 @@
 <title>Block Blast</title>
 <script>/* 尽早检测低端机: 首屏首次绘制前就给<html>加.low, 低端机第一帧即轻量(降秒退) */
 try{ var _dm=navigator.deviceMemory,_hc=navigator.hardwareConcurrency;
-  if((_dm&&_dm<=4)||(!_dm&&_hc&&_hc<=4)) document.documentElement.classList.add('low'); }catch(e){}</script>
+  if((_dm&&_dm<=4)||(!_dm&&_hc&&_hc<=4)||location.search.indexOf('low')>=0) document.documentElement.classList.add('low'); }catch(e){}  // ?low 手动强制降级(测试用)</script>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
   html,body { height:100%; overflow:hidden; }
@@ -246,6 +246,7 @@ function gemBg(c){
 /* ================= 状态 ================= */
 const N=8;
 let grid, tray, placed, score, best, combo, playing;
+let gameStage='loading';   // 退出埋点用: loading→intro(新手引导)→playing(正常局)→over(结算) — 标记用户在哪一阶段退出
 let stats={lines:0,maxCombo:0};              // 本局战绩
 const boardEl=document.getElementById('board'), trayEl=document.getElementById('tray');
 const scoreEl=document.getElementById('score'), bestEl=document.getElementById('best');
@@ -277,22 +278,21 @@ function tone(f,dur,opt={}){ try{
 const SCALE=[523.25,659.25,783.99,1046.5,1318.5];      // C5 E5 G5 C6 E6 五声音阶
 const vib=p=>{ try{ navigator.vibrate&&navigator.vibrate(p); }catch(e){} };  // 安卓触觉反馈
 // 全套音效走"明亮上扬 + 高频铃声"(sine/triangle), 无低频砰/sawtooth → 轻快愉悦不沉闷
-const sndPlace=()=>{ tone(659,0.07,{type:'sine',vol:0.15,slide:988}); };   // 明快上扬"叮"
-// 消除: 高八度 sine 亮铃琶音(与连消 sndCombo 同族清亮音色)
+// 木质木琴风音效(对标参考视频: 放置=厚实木块"咚", 消除=木琴上行琶音, 温暖好听)
+const sndPlace=()=>{ tone(560,0.07,{type:'triangle',vol:0.15}); tone(190,0.13,{type:'sine',vol:0.17,slide:120}); };  // 高频click + 低频身体
 const sndClear=n=>{ const k=Math.min(Math.max(n,2),4);   // 1行也用2行的声音
   for(let i=0;i<k;i++){
-    tone(SCALE[i]*2,0.18,{type:'sine',vol:0.17,delay:i*0.06});   // 高八度亮铃(主)
-    tone(SCALE[i]*3,0.13,{type:'sine',vol:0.07,delay:i*0.06});   // 更高泛音, 闪亮
+    tone(SCALE[i],0.22,{type:'triangle',vol:0.2,delay:i*0.07});     // 木琴主音(上行)
+    tone(SCALE[i]*4,0.12,{type:'sine',vol:0.05,delay:i*0.07});       // 第4泛音: 木琴亮质感
   } };
 const sndCombo=c=>{ const f=SCALE[Math.min(c-1,4)];
-  tone(f*2,0.14,{type:'sine',vol:0.14,delay:0.05}); tone(f*3,0.16,{type:'sine',vol:0.08,delay:0.12}); }; // 越连越高越亮
-const sndDead=()=>{ // 柔和下行三音(温和收尾, 不低沉)
-  tone(784,0.16,{type:'sine',vol:0.14}); tone(659,0.18,{type:'sine',vol:0.13,delay:0.13}); tone(523,0.3,{type:'sine',vol:0.12,delay:0.3}); };
-// 大消除闪亮爆发: 明亮上扫 + 铃铛叮当(全高频, 无低频)
-const sndBurst=()=>{
-  tone(784,0.16,{type:'sine',vol:0.14,slide:1568});      // 明亮上扫
-  tone(1046.5,0.14,{type:'sine',vol:0.12,delay:0.04});   // 铃铛
-  tone(1568,0.14,{type:'triangle',vol:0.09,delay:0.1});  // 闪亮尾音
+  tone(f*2,0.18,{type:'triangle',vol:0.14,delay:0.05}); tone(f*8,0.1,{type:'sine',vol:0.04,delay:0.05}); };  // 连消更高更亮
+const sndDead=()=>{ // 柔和木琴下行(温暖收尾)
+  tone(392,0.2,{type:'triangle',vol:0.15}); tone(294,0.22,{type:'triangle',vol:0.13,delay:0.16}); tone(196,0.36,{type:'triangle',vol:0.12,delay:0.34}); };
+const sndBurst=()=>{  // 大消除木琴华彩上行
+  tone(784,0.2,{type:'triangle',vol:0.13,slide:1568});
+  tone(1046.5,0.16,{type:'triangle',vol:0.1,delay:0.05});
+  tone(1568,0.14,{type:'sine',vol:0.06,delay:0.1});
 };
 
 /* ================= 初始化棋盘 DOM ================= */
@@ -507,7 +507,11 @@ function place(p,r0,c0,slot){
   vib(8); sndPlace();
   const {rows,cols}=fullLinesWith([],0,0);
   const lines=rows.length+cols.length;
-  if(tutorialActive && lines>0) endTutorial(true);   // 首次消除: 引导毕业
+  if(tutorialActive && lines>0){                     // 引导两连: 第1步消6行, 第2步消4行(combo×2), 两步毕业
+    tutStep++;
+    if(tutStep>=TUT_SPOTS.length) endTutorial(true);
+    // 第2步局在 afterPlace(grid清空后)动态铺
+  }
   renderBoard();
   if(lines>0){
     combo=Math.min(combo+1, CFG.comboCap);
@@ -564,8 +568,17 @@ function refillSlot(slot){
   if(el){ el.classList.add('spawn'); setTimeout(()=>el.classList.remove('spawn'),240); }
 }
 function afterPlace(slot){
+  if(tutorialActive){                     // 引导期间不正常补牌/判死局
+    if(tutStep===1 && !step2built){        // 第1步(消4行)已清盘 → 铺第2步局: 竖2条消2行(左边中间, 与第1步右侧错开)
+      step2built=true;
+      for(let r=3;r<=4;r++) for(let c=1;c<8;c++) grid[r][c]=TUT_PAL[(r*7+c)%TUT_PAL.length];  // 行3,4 × 列1-7(差列0)
+      tray=[{type:'B2', color:SHAPES.B2.color, v:SHAPES.B2.v[1]}, null, null];  // 竖2条
+      renderBoard(); renderTray();
+      positionTutorial(); document.getElementById('tut').classList.add('show');
+    }
+    return;
+  }
   refillSlot(slot);                       // 用掉一个立即补一个
-  // 死局检测
   const alive=tray.some(p=>p&&anyPlacement(p.v));
   if(!alive) gameOver();
 }
@@ -617,7 +630,7 @@ function showBanner(txt,comboN){
 
 /* ================= 开局 / 结束 ================= */
 function gameOver(){
-  playing=false; sndDead(); vib(90);
+  playing=false; gameStage='over'; sndDead(); vib(90);
   endTutorial(false);                        // 引导层若还在, 收起
   document.getElementById('game').classList.add('dead');   // 棋盘+候选块渐灰: 死亡仪式感
   const isNew = score>best;
@@ -639,12 +652,15 @@ function gameOver(){
 }
 /* ===== 新手引导: 预铺一行差1格, 手指指引, 首次消除即毕业 ===== */
 let tutorialActive=false;
-const TUT_ROW=4, TUT_GAP=3;                      // 预铺行与缺口位置
+const TUT_SPOTS=[[4,7],[3,0]];                    // 两步落点: ①竖4条消4行(右侧) ②竖2条消2行(左边中间, 错开)
+let tutStep=0, step2built=false;
+const TUT_PAL=['#ff4d54','#ff9327','#ffca2b','#3fd35d','#22c7f2','#b45cf0','#ff5fae'];
+function tutFill(r0){ for(let r=r0;r<8;r++) for(let c=0;c<7;c++) grid[r][c]=TUT_PAL[(r*7+c)%TUT_PAL.length]; }
 function setupTutorial(){
-  tutorialActive=true;
-  const pal=['#dc4437','#f0862c','#f5c235','#52b545','#3ab4ec','#9b51d6','#e05aa8'];
-  for(let c=0;c<N;c++) if(c!==TUT_GAP) grid[TUT_ROW][c]=pal[c%pal.length];
-  tray[0]=makePiece('B1');                       // 保证第一块就能补缺口
+  tutorialActive=true; tutStep=0; step2built=false;
+  // 第1步引爆局: 行4-7 × 列0-6 填满, 列7空; 放竖4条补列7 → 消4行
+  tutFill(4);
+  tray=[{type:'B4', color:SHAPES.B4.color, v:SHAPES.B4.v[1]}, null, null];  // 竖4条
   renderBoard(); renderTray();
   document.getElementById('tut').classList.add('show');
   positionTutorial();
@@ -653,7 +669,8 @@ function positionTutorial(){
   if(!tutorialActive) return;
   const game=document.getElementById('game').getBoundingClientRect();
   const slot=document.querySelector('.slot[data-i="0"]').getBoundingClientRect();
-  const cell=cells[TUT_ROW*N+TUT_GAP].getBoundingClientRect();
+  const [tr,tc]=TUT_SPOTS[tutStep];
+  const cell=cells[tr*N+tc].getBoundingClientRect();
   const f=document.getElementById('tutFinger');
   f.style.setProperty('--fx',(slot.left+slot.width/2-game.left-14)+'px');
   f.style.setProperty('--fy',(slot.top+slot.height/2-game.top-6)+'px');
@@ -664,7 +681,7 @@ function positionTutorial(){
 function endTutorial(graduated){
   if(!tutorialActive) return;
   document.getElementById('tut').classList.remove('show');
-  if(graduated){ tutorialActive=false; store.set('bb_tut','1'); }
+  if(graduated){ tutorialActive=false; store.set('bb_tut','1'); refillTray(); gameStage='playing'; }  // 毕业→发3块进正常局
 }
 function newGame(){
   grid=Array.from({length:N},()=>Array(N).fill(0));
@@ -677,6 +694,7 @@ function newGame(){
   document.getElementById('over').classList.remove('show');
   renderBoard(); refillTray();
   if(!store.get('bb_tut')) setupTutorial();      // 新玩家: 进引导
+  gameStage = tutorialActive ? 'intro' : 'playing';
 }
 document.getElementById('retry').addEventListener('click',()=>location.reload());
 /* Toast 轻提示 */
